@@ -1,0 +1,18 @@
+{
+  "domain": "unifi_access",
+  "name": "Unifi Access",
+  "codeowners": [
+    "@imhotep"
+  ],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://www.home-assistant.io/integrations/unifi_access",
+  "homekit": {},
+  "iot_class": "local_poll",
+  "requirements": [
+    "websockets==12.0",
+    "requests==2.31.0"
+  ],
+  "ssdp": [],
+  "zeroconf": []
+}
