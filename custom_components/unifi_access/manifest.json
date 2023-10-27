@@ -6,13 +6,12 @@
   ],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://www.home-assistant.io/integrations/unifi_access",
-  "homekit": {},
-  "iot_class": "local_poll",
+  "documentation": "https://github.com/imhotep/hass-unifi-access",
+  "issue_tracker": "https://github.com/imhotep/hass-unifi-access/issues",
+  "iot_class": "local_polling",
+  "integration_type": "device",
   "requirements": [
-    "websockets==12.0",
     "requests==2.31.0"
   ],
-  "ssdp": [],
-  "zeroconf": []
+  "version": "1.0.0"
 }
