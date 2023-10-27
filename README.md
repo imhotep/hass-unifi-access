@@ -24,6 +24,24 @@ This is a basic integration of Unifi Access in [Home Assistant](https://homeassi
     - Door Position Sensor (binary_sensor)
     - Door Lock (this will take a while to show up under the device but it should show up after a while)
 
+# Example automation
+
+```
+alias: Unlock Front Gate when motion is detected in Entryway
+description: ""
+trigger:
+  - platform: state
+    entity_id:
+      - binary_sensor.entryway_motion_detected
+condition: []
+action:
+  - service: lock.unlock
+    data: {}
+    target:
+      device_id: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+mode: single
+```
+
 # Wish list 
 This integration is pretty basic but I would like to add support for the following
 - Using websockets instead of polling and subsequently supporting doorbell presses and faster updates (only available in Unifi Access 1.20.11 and later)
