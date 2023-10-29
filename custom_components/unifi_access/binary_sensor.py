@@ -49,6 +49,7 @@ class UnifiDoorStatusEntity(CoordinatorEntity, BinarySensorEntity):
         self._attr_unique_id = door.id
         self.device_name = door.name
         self._attr_name = f"{door.name} Door Position Sensor"
+        self._attr_available = door.door_position_status != None
         self._attr_is_on = door.door_position_status == "open"
 
     @property
@@ -61,7 +62,5 @@ class UnifiDoorStatusEntity(CoordinatorEntity, BinarySensorEntity):
         )
 
     def _handle_coordinator_update(self) -> None:
-        self._attr_is_on = (
-            self.coordinator.data[self.idx].door_position_status == "open"
-        )
+        self._attr_is_on = self.coordinator.data[self.idx].is_open
         self.async_write_ha_state()

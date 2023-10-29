@@ -1,4 +1,4 @@
-from .const import DOORS_URL, DOOR_LOCK_URL, DOOR_UNLOCK_URL, UNIFI_ACCESS_API_PORT
+from .const import DOORS_URL, DOOR_UNLOCK_URL, UNIFI_ACCESS_API_PORT
 
 from requests import request
 import logging
@@ -15,6 +15,10 @@ from datetime import timedelta
 import urllib3
 
 urllib3.disable_warnings()
+
+from urllib.parse import urlparse
+
+import asyncio
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,7 +39,10 @@ class UnifiAccessApi:
 
     def __init__(self, host: str) -> None:
         """Initialize."""
-        self.host = f"https://{host}:{UNIFI_ACCESS_API_PORT}"
+        hostname = (
+            urlparse(host).hostname if urlparse(host).hostname else host.split(":")[0]
+        )
+        self.host = f"https://{hostname}:{UNIFI_ACCESS_API_PORT}"
         self._api_token = None
         self._headers = {
             "Accept": "application/json",
@@ -47,7 +54,7 @@ class UnifiAccessApi:
         self._headers["Authorization"] = f"Bearer {self._api_token}"
 
     def update(self):
-        _LOGGER.info(f"Getting door updates from Unifi Access {self.host}")
+        # _LOGGER.info(f"Getting door updates from Unifi Access {self.host}")
 
         data = self._make_http_request(f"{self.host}{DOORS_URL}")
 
@@ -80,13 +87,6 @@ class UnifiAccessApi:
             _LOGGER.error(f"Error authenticating {self.host}")
             return False
         return True
-
-    def lock_door(self, door_id: str) -> None:
-        """Test if we can authenticate with the host."""
-        _LOGGER.info(f"Locking door with id {door_id}")
-        self._make_http_request(
-            f"{self.host}{DOOR_LOCK_URL}".format(door_id=door_id), "PUT"
-        )
 
     def unlock_door(self, door_id: str) -> None:
         """Test if we can authenticate with the host."""
@@ -144,6 +144,8 @@ class UnifiAccessDoor:
         door_lock_relay_status: str,
         api: UnifiAccessApi,
     ) -> None:
+        self._is_locking = False
+        self._is_unlocking = False
         self._api = api
         self._id = door_id
         self.name = name
@@ -154,8 +156,30 @@ class UnifiAccessDoor:
     def id(self) -> str:
         return self._id
 
-    def unlock(self) -> None:
-        self._api.unlock_door(self._id)
+    @property
+    def is_open(self):
+        return self.door_position_status == "open"
 
-    def lock(self) -> None:
-        self._api.lock_door(self._id)
+    @property
+    def is_locked(self):
+        """Solely used for locked state when calling lock"""
+        return self.door_lock_relay_status == "lock"
+
+    @property
+    def is_locking(self):
+        """Solely used for locking state when calling lock"""
+        return False
+
+    @property
+    def is_unlocking(self):
+        """Solely used for unlocking state when calling unlock"""
+        return self._is_unlocking
+
+    def unlock(self) -> None:
+        if self.is_locked:
+            self._is_unlocking = True
+            self._api.unlock_door(self._id)
+            self._is_unlocking = False
+            _LOGGER.info(f"Door with door ID {self.id} is unlocked")
+        else:
+            _LOGGER.error(f"Door with door ID {self.id} is already unlocked")
