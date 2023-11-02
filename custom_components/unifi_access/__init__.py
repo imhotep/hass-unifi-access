@@ -16,13 +16,9 @@ PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.LOCK]
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Unifi Access from a config entry."""
-    api = UnifiAccessApi(entry.data["host"])
+    api = UnifiAccessApi(entry.data["host"], entry.data["verify_ssl"])
     api.set_api_token(entry.data["api_token"])
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = api
-    # TODO 1. Create API instance
-    # TODO 2. Validate the API connection (and authentication)
-    # TODO 3. Store an API object for your platforms to access
-    # hass.data[DOMAIN][entry.entry_id] = MyApi(...)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 

@@ -21,6 +21,7 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required("host"): str,
         vol.Required("api_token"): str,
+        vol.Required("verify_ssl"): bool,
     }
 )
 
@@ -30,23 +31,22 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
     Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
     """
-    # TODO validate the data can be used to set up a connection.
 
-    # If your PyPI package is not built with async, pass your methods
-    # to the executor:
-    # await hass.async_add_executor_job(
-    #     your_validate_func, data["username"], data["password"]
-    # )
+    api = UnifiAccessApi(data["host"], data["verify_ssl"])
 
-    api = UnifiAccessApi(data["host"])
+    auth_response = await hass.async_add_executor_job(
+        api.authenticate, data["api_token"]
+    )
 
-    if not await hass.async_add_executor_job(api.authenticate, data["api_token"]):
-        raise InvalidAuth
-
-    # If you cannot connect:
-    # throw CannotConnect
-    # If the authentication is wrong:
-    # InvalidAuth
+    match auth_response:
+        case "api_error":
+            raise CannotConnect
+        case "api_auth_error":
+            raise InvalidApiKey
+        case "ssl_error":
+            raise SSLVerificationError
+        case "ok":
+            _LOGGER.info("Unifi Access API authorized")
 
     # Return info that you want to store in the config entry.
     return {"title": "Unifi Access Doors"}
@@ -69,8 +69,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 info = await validate_input(self.hass, user_input)
             except CannotConnect:
                 errors["base"] = "cannot_connect"
-            except InvalidAuth:
-                errors["base"] = "invalid_auth"
+            except InvalidApiKey:
+                errors["base"] = "invalid_api_key"
+            except SSLVerificationError:
+                errors["base"] = "ssl_error"
             except Exception:  # pylint: disable=broad-except
                 _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
@@ -88,5 +90,9 @@ class CannotConnect(HomeAssistantError):
     """Error to indicate we cannot connect."""
 
 
-class InvalidAuth(HomeAssistantError):
+class SSLVerificationError(HomeAssistantError):
+    """Error to indicate there is failed SSL certificate verification."""
+
+
+class InvalidApiKey(HomeAssistantError):
     """Error to indicate there is invalid auth."""

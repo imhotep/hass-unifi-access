@@ -1,6 +1,7 @@
 from .const import DOORS_URL, DOOR_UNLOCK_URL, UNIFI_ACCESS_API_PORT
 
 from requests import request
+from requests.exceptions import SSLError
 import logging
 
 from homeassistant.helpers.update_coordinator import (
@@ -14,11 +15,7 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from datetime import timedelta
 import urllib3
 
-urllib3.disable_warnings()
-
 from urllib.parse import urlparse
-
-import asyncio
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,8 +34,13 @@ class UnifiAccessApi:
     TODO Remove this placeholder class and replace with things from your PyPI package.
     """
 
-    def __init__(self, host: str) -> None:
+    def __init__(self, host: str, verify_ssl: bool = False) -> None:
         """Initialize."""
+        self.verify_ssl = verify_ssl
+        if self.verify_ssl == False:
+            _LOGGER.warning(f"SSL Verification disabled for {host}")
+            urllib3.disable_warnings()
+
         hostname = (
             urlparse(host).hostname if urlparse(host).hostname else host.split(":")[0]
         )
@@ -55,7 +57,6 @@ class UnifiAccessApi:
 
     def update(self):
         # _LOGGER.info(f"Getting door updates from Unifi Access {self.host}")
-
         data = self._make_http_request(f"{self.host}{DOORS_URL}")
 
         doors: list[UnifiAccessDoor] = []
@@ -77,16 +78,27 @@ class UnifiAccessApi:
         _LOGGER.info(f"Getting door update from Unifi Access with id {door_id}")
         self._make_http_request(f"{self.host}{DOORS_URL}/{door_id}")
 
-    def authenticate(self, api_token: str) -> bool:
+    def authenticate(self, api_token: str) -> str:
         """Test if we can authenticate with the host."""
         self.set_api_token(api_token)
         _LOGGER.info(f"Authenticating {self.host}")
         try:
             self.update()
         except ApiError:
-            _LOGGER.error(f"Error authenticating {self.host}")
-            return False
-        return True
+            _LOGGER.error(
+                f"Could perform action with {self.host}. Check host and token."
+            )
+            return "api_error"
+        except ApiAuthError:
+            _LOGGER.error(
+                f"Could not authenticate with {self.host}. Check host and token."
+            )
+            return "api_auth_error"
+        except SSLError:
+            _LOGGER.error(f"Error validating SSL Certificate for {self.host}.")
+            return "ssl_error"
+
+        return "ok"
 
     def unlock_door(self, door_id: str) -> None:
         """Test if we can authenticate with the host."""
@@ -100,14 +112,14 @@ class UnifiAccessApi:
             method,
             url,
             headers=self._headers,
-            verify=False,
+            verify=self.verify_ssl,
             timeout=10,
         )
 
+        if r.status_code == 401:
+            raise ApiAuthError
+
         if r.status_code != 200:
-            _LOGGER.error(
-                f"Could not authenticate with {self.host}. Check host and token. URL: {url}"
-            )
             raise ApiError
 
         response = r.json()

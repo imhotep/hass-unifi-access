@@ -5,14 +5,16 @@
         },
         "error": {
             "cannot_connect": "Failed to connect",
-            "invalid_auth": "Invalid authentication",
+            "invalid_api_key": "Invalid API key",
+            "ssl_error": "Error validating SSL certificate",
             "unknown": "Unexpected error"
         },
         "step": {
             "user": {
                 "data": {
                     "api_token": "API Token",
-                    "host": "Host"
+                    "host": "Host",
+                    "verify_ssl": "Verify SSL certificate"
                 }
             }
         }
