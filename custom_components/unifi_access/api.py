@@ -69,15 +69,16 @@ class UnifiAccessApi:
         doors: list[UnifiAccessDoor] = []
 
         for i, door in enumerate(data):
-            doors.append(
-                UnifiAccessDoor(
-                    door_id=door["id"],
-                    name=door["name"],
-                    door_position_status=door["door_position_status"],
-                    door_lock_relay_status=door["door_lock_relay_status"],
-                    api=self,
+            if door["is_bind_hub"] == True:
+                doors.append(
+                    UnifiAccessDoor(
+                        door_id=door["id"],
+                        name=door["name"],
+                        door_position_status=door["door_position_status"],
+                        door_lock_relay_status=door["door_lock_relay_status"],
+                        api=self,
+                    )
                 )
-            )
 
         return doors
 
