@@ -39,6 +39,8 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     )
 
     match auth_response:
+        case "cannot_connect":
+            raise CannotConnect
         case "api_error":
             raise CannotConnect
         case "api_auth_error":

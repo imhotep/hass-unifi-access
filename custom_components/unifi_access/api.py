@@ -2,6 +2,7 @@ from .const import DOORS_URL, DOOR_UNLOCK_URL, UNIFI_ACCESS_API_PORT
 
 from requests import request
 from requests.exceptions import SSLError
+from requests.exceptions import ConnectionError as ConnError
 import logging
 
 from homeassistant.helpers.update_coordinator import (
@@ -41,10 +42,16 @@ class UnifiAccessApi:
             _LOGGER.warning(f"SSL Verification disabled for {host}")
             urllib3.disable_warnings()
 
-        hostname = (
-            urlparse(host).hostname if urlparse(host).hostname else host.split(":")[0]
+        host_parts = host.split(":")
+        parsed_host = urlparse(host)
+
+        hostname = parsed_host.hostname if parsed_host.hostname else host_parts[0]
+        port = (
+            parsed_host.port
+            if parsed_host.port
+            else (host_parts[1] if len(host_parts) > 1 else UNIFI_ACCESS_API_PORT)
         )
-        self.host = f"https://{hostname}:{UNIFI_ACCESS_API_PORT}"
+        self.host = f"https://{hostname}:{port}"
         self._api_token = None
         self._headers = {
             "Accept": "application/json",
@@ -97,6 +104,9 @@ class UnifiAccessApi:
         except SSLError:
             _LOGGER.error(f"Error validating SSL Certificate for {self.host}.")
             return "ssl_error"
+        except ConnError:
+            _LOGGER.error(f"Cannot connect to {self.host}.")
+            return "cannot_connect"
 
         return "ok"
 
