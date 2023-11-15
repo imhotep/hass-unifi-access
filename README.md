@@ -46,7 +46,7 @@ action:
 mode: single
 ```
 # API Limitations
-The Unifi Access API does *NOT* support door locking at the moment. You probably already have it set to autmatically lock after a small delay anyway.
+The Unifi Access API does *NOT* support door locking at the moment. You probably already have it set to automatically lock after a small delay anyway.
 
 # Wish list 
 This integration is pretty basic for now but I would like to add support for the following
