@@ -12,8 +12,9 @@
         "step": {
             "user": {
                 "data": {
-                    "api_token": "API Token",
+                    "api_token": "API token",
                     "host": "Host",
+                    "use_polling": "Use polling",
                     "verify_ssl": "Verify SSL certificate"
                 }
             }

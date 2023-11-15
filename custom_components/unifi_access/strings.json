@@ -5,7 +5,8 @@
         "data": {
           "host": "[%key:common::config_flow::data::host%]",
           "api_token": "[%key:common::config_flow::data::api_token%]",
-          "verify_ssl": "[%key:common::config_flow::data::verify_ssl%]"
+          "verify_ssl": "[%key:common::config_flow::data::verify_ssl%]",
+          "use_polling": "Use polling"
         }
       }
     },
