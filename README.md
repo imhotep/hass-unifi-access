@@ -9,7 +9,7 @@ This is a basic integration of Unifi Access in [Home Assistant](https://homeassi
 # Installation (HACS)
 - Add this repository as a custom repository in HACS
 - Restart Home Assistant
-- Add new Integration -> Unifi Access (sorry no logos for now until this [PR](https://github.com/home-assistant/brands/pull/4827) is approved)
+- Add new Integration -> Unifi Access
 - Enter your Unifi Access controller IP or Hostname (default is `unifi` or `UDMPRO`). No need to enter port or scheme
 - Enter your API Token that you generated in Unifi Access
 - It should find all of your doors and add two entities for each one
@@ -21,7 +21,7 @@ This is a basic integration of Unifi Access in [Home Assistant](https://homeassi
 - Clone this repository
 - Copy the `custom_components/unifi_access` to your `config/custom_components` folder in Home Assistant.
 - Restart Home Assistant
-- Add new Integration -> Unifi Access (sorry no logos for now until this [PR](https://github.com/home-assistant/brands/pull/4827) is approved)
+- Add new Integration -> Unifi Access
 - Enter your Unifi Access controller IP or Hostname (default is `unifi` or `UDMPRO`). No need to enter port
 - Enter your API Token that you generated in Unifi Access
 - It should find all of your doors and add two entities for each one
