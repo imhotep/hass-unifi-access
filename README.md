@@ -48,6 +48,6 @@ mode: single
 # API Limitations
 The Unifi Access API does *NOT* support door locking at the moment. You probably already have it set to automatically lock after a small delay anyway.
 
-# Wish list 
-This integration is pretty basic for now but I would like to add support for the following
-- Using websockets instead of polling and subsequently supporting doorbell presses and faster updates (only available in Unifi Access 1.20.11 and later)
+# Wishlist
+- door code via service
+

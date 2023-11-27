@@ -1,17 +1,13 @@
 {
   "domain": "unifi_access",
   "name": "Unifi Access",
-  "codeowners": [
-    "@imhotep"
-  ],
+  "codeowners": ["@imhotep"],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/imhotep/hass-unifi-access",
   "issue_tracker": "https://github.com/imhotep/hass-unifi-access/issues",
-  "iot_class": "local_polling",
+  "iot_class": "local_push",
   "integration_type": "device",
-  "requirements": [
-    "requests==2.31.0"
-  ],
+  "requirements": ["websocket-client==1.6.4", "requests==2.31.0"],
   "version": "1.0.0"
 }
