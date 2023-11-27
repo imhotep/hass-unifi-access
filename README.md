@@ -1,4 +1,4 @@
-# Unifi Access Custom Integration for Home Assistant (ALPHA)
+# Unifi Access Custom Integration for Home Assistant
 
 This is a basic integration of Unifi Access in [Home Assistant](https://homeassistant.io). If you have Unifi Access set up with UID this will *NOT* work
 
