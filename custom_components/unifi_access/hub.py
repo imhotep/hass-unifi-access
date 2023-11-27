@@ -239,7 +239,6 @@ class UnifiAccessHub:
                         None,
                     )
                     if existing_door is not None:
-                        existing_door.doorbell_pressed = True
                         existing_door.doorbell_request_id = update["data"]["request_id"]
                         _LOGGER.info(
                             "Doorbell press on %s Request ID %s",
@@ -260,7 +259,6 @@ class UnifiAccessHub:
                         None,
                     )
                     if existing_door is not None:
-                        existing_door.doorbell_pressed = False
                         existing_door.doorbell_request_id = None
                         _LOGGER.info(
                             "Doorbell press stopped on %s Request ID %s",

@@ -25,8 +25,12 @@ class UnifiAccessDoor:
         self.name = name
         self.door_position_status = door_position_status
         self.door_lock_relay_status = door_lock_relay_status
-        self.doorbell_pressed = False
         self.doorbell_request_id = None
+    
+    @property
+    def doorbell_pressed(self) -> bool:
+        """Get doorbell pressed status."""
+        return self.doorbell_request_id is not None
 
     @property
     def id(self) -> str:
