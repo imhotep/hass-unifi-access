@@ -12,9 +12,12 @@ This is a basic integration of Unifi Access in [Home Assistant](https://homeassi
 - Add new Integration -> Unifi Access
 - Enter your Unifi Access controller IP or Hostname (default is `unifi` or `UDMPRO`). No need to enter port or scheme
 - Enter your API Token that you generated in Unifi Access
-- It should find all of your doors and add two entities for each one
-    - Door Position Sensor (binary_sensor)
-    - Door Lock (this will not show up immediately under the device but it should show up after a while)
+- Select `Verify SSL certificate` only if you have a valid SSL certificate. For example: If your Unifi Access API server is behind a reverse proxy. Selecting this will fail otherwise.
+- Select `Use polling` if your Unifi Access version is < 1.90. Default is to use websockets for instantaneous updates and more features.
+- It should find all of your doors and add two or three entities for each one
+    - Door Position Sensor (binary_sensor). If you don't have connected, it will always be **off** (closed).
+    - Doorbell Pressed (binary_sensor). Requires **Unifi Access Reader Pro G1/G2** otherwise always **off**. Only appears when **Use polling** is not selected!
+    - Door Lock (this will not show up immediately under the device but it should show up after a while). You can unlock (but not lock) a door
 
 
 # Installation (manual)
@@ -24,8 +27,9 @@ This is a basic integration of Unifi Access in [Home Assistant](https://homeassi
 - Add new Integration -> Unifi Access
 - Enter your Unifi Access controller IP or Hostname (default is `unifi` or `UDMPRO`). No need to enter port
 - Enter your API Token that you generated in Unifi Access
-- It should find all of your doors and add two entities for each one
+- It should find all of your doors and add three entities for each one
     - Door Position Sensor (binary_sensor)
+    - Doorbell Pressed (binary_sensor)
     - Door Lock (this will not show up immediately under the device but it should show up after a while)
 
 # Example automation
