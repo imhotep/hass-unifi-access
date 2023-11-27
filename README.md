@@ -15,9 +15,9 @@ This is a basic integration of Unifi Access in [Home Assistant](https://homeassi
 - Select `Verify SSL certificate` only if you have a valid SSL certificate. For example: If your Unifi Access API server is behind a reverse proxy. Selecting this will fail otherwise.
 - Select `Use polling` if your Unifi Access version is < 1.90. Default is to use websockets for instantaneous updates and more features.
 - It should find all of your doors and add two or three entities for each one
-    - Door Position Sensor (binary_sensor). If you don't have connected, it will always be **off** (closed).
+    - Door Position Sensor (binary_sensor). If you don't have one connected, it will always be **off** (closed).
     - Doorbell Pressed (binary_sensor). Requires **Unifi Access Reader Pro G1/G2** otherwise always **off**. Only appears when **Use polling** is not selected!
-    - Door Lock (this will not show up immediately under the device but it should show up after a while). You can unlock (but not lock) a door
+    - Door Lock (lock). This will not show up immediately under the device but it should show up after a while. You can unlock (but not lock) a door
 
 
 # Installation (manual)
@@ -30,9 +30,9 @@ This is a basic integration of Unifi Access in [Home Assistant](https://homeassi
 - Select `Verify SSL certificate` only if you have a valid SSL certificate. For example: If your Unifi Access API server is behind a reverse proxy. Selecting this will fail otherwise.
 - Select `Use polling` if your Unifi Access version is < 1.90. Default is to use websockets for instantaneous updates and more features.
 - It should find all of your doors and add two or three entities for each one
-    - Door Position Sensor (binary_sensor). If you don't have connected, it will always be **off** (closed).
+    - Door Position Sensor (binary_sensor). If you don't have one connected, it will always be **off** (closed).
     - Doorbell Pressed (binary_sensor). Requires **Unifi Access Reader Pro G1/G2** otherwise always **off**. Only appears when **Use polling** is not selected!
-    - Door Lock (this will not show up immediately under the device but it should show up after a while). You can unlock (but not lock) a door
+    - Door Lock (lock). This will not show up immediately under the device but it should show up after a while. You can unlock (but not lock) a door
 
 # Example automation
 
