@@ -184,7 +184,7 @@ class UnifiAccessHub:
 
         return response["data"]
 
-    def on_message(self, wsap, message):
+    def on_message(self, ws: websocket.WebSocketApp, message):
         """Handle messages received on the websocket client.
 
         Doorbell presses are relying on door names so if those are not unique, it may cause some issues
@@ -192,7 +192,7 @@ class UnifiAccessHub:
         # _LOGGER.info(f"Got update {message}")
         if "Hello" not in message:
             update = json.loads(message)
-            existing_door: UnifiAccessDoor = None
+            existing_door = None
             match update["event"]:
                 case "access.dps_change":
                     door_id = update["data"]["door_id"]
@@ -220,7 +220,7 @@ class UnifiAccessHub:
                     door_id = update["data"]["door"]["unique_id"]
                     _LOGGER.info("Device Update via websocket %s", door_id)
                     if door_id in self.doors:
-                        existing_door: UnifiAccessDoor = self.doors[door_id]
+                        existing_door = self.doors[door_id]
                         self.update_door(door_id)
                         _LOGGER.info(
                             "Door name %s with ID %s updated",
@@ -230,7 +230,7 @@ class UnifiAccessHub:
                 case "access.remote_view":
                     door_name = update["data"]["door_name"]
                     _LOGGER.info("Doorbell Press %s", door_name)
-                    existing_door: UnifiAccessDoor = next(
+                    existing_door = next(
                         (
                             door
                             for door in self.doors.values()
@@ -239,6 +239,7 @@ class UnifiAccessHub:
                         None,
                     )
                     if existing_door is not None:
+                        existing_door.doorbell_pressed = True
                         existing_door.doorbell_request_id = update["data"]["request_id"]
                         _LOGGER.info(
                             "Doorbell press on %s Request ID %s",
@@ -250,7 +251,7 @@ class UnifiAccessHub:
                     _LOGGER.info(
                         "Doorbell press stopped. Request ID %s", doorbell_request_id
                     )
-                    existing_door: UnifiAccessDoor = next(
+                    existing_door = next(
                         (
                             door
                             for door in self.doors.values()
@@ -259,6 +260,7 @@ class UnifiAccessHub:
                         None,
                     )
                     if existing_door is not None:
+                        existing_door.doorbell_pressed = False
                         existing_door.doorbell_request_id = None
                         _LOGGER.info(
                             "Doorbell press stopped on %s Request ID %s",
@@ -269,9 +271,25 @@ class UnifiAccessHub:
             if existing_door is not None:
                 existing_door.publish_updates()
 
-    def on_error(self, wsap, error):
+    def on_error(self, ws: websocket.WebSocketApp, error):
         """Handle errors in the websocket client."""
         _LOGGER.error("Got error %s", error)
+
+    def on_open(self, ws: websocket.WebSocketApp):
+        """Show message on connection."""
+        _LOGGER.info("Websocket connection established")
+
+    def on_close(self, ws: websocket.WebSocketApp, close_status_code, close_msg):
+        """Handle websocket closures."""
+        _LOGGER.error(
+            "Websocket connection closed code: %s message: %s",
+            close_status_code,
+            close_msg,
+        )
+        sslopt = None
+        if self.verify_ssl is False:
+            sslopt = {"cert_reqs": ssl.CERT_NONE}
+        ws.run_forever(sslopt=sslopt, reconnect=5)
 
     def start_continuous_updates(self):
         """Start listening for updates in a separate thread using websocket-client."""
@@ -288,11 +306,13 @@ class UnifiAccessHub:
             header=self._websocket_headers,
             on_message=self.on_message,
             on_error=self.on_error,
+            on_open=self.on_open,
+            on_close=self.on_close,
         )
         sslopt = None
         if self.verify_ssl is False:
             sslopt = {"cert_reqs": ssl.CERT_NONE}
-        ws.run_forever(sslopt=sslopt)
+        ws.run_forever(sslopt=sslopt, reconnect=5)
 
 
 class UnifiAccessCoordinator(DataUpdateCoordinator):
