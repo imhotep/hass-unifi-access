@@ -20,8 +20,11 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
+    ACCESS_EVENT,
     DEVICE_NOTIFICATIONS_URL,
     DOOR_UNLOCK_URL,
+    DOORBELL_START_EVENT,
+    DOORBELL_STOP_EVENT,
     DOORS_URL,
     UNIFI_ACCESS_API_PORT,
 )
@@ -76,6 +79,7 @@ class UnifiAccessHub:
         }
         self._doors: dict[str, UnifiAccessDoor] = {}
         self.update_t = None
+        self.loop = asyncio.get_event_loop()
 
     @property
     def doors(self):
@@ -189,6 +193,8 @@ class UnifiAccessHub:
 
         Doorbell presses are relying on door names so if those are not unique, it may cause some issues
         """
+        event = None
+        event_attributes = None
         # _LOGGER.info(f"Got update {message}")
         if "Hello" not in message:
             update = json.loads(message)
@@ -240,6 +246,12 @@ class UnifiAccessHub:
                     )
                     if existing_door is not None:
                         existing_door.doorbell_request_id = update["data"]["request_id"]
+                        event = "doorbell_press"
+                        event_attributes = {
+                            "door_name": existing_door.name,
+                            "door_id": existing_door.id,
+                            "type": DOORBELL_START_EVENT,
+                        }
                         _LOGGER.info(
                             "Doorbell press on %s Request ID %s",
                             door_name,
@@ -260,14 +272,64 @@ class UnifiAccessHub:
                     )
                     if existing_door is not None:
                         existing_door.doorbell_request_id = None
+                        event = "doorbell_press"
+                        event_attributes = {
+                            "door_name": existing_door.name,
+                            "door_id": existing_door.id,
+                            "type": DOORBELL_STOP_EVENT,
+                        }
                         _LOGGER.info(
                             "Doorbell press stopped on %s Request ID %s",
                             existing_door.name,
                             doorbell_request_id,
                         )
-
+                case "access.logs.add":
+                    door = next(
+                        (
+                            target
+                            for target in update["data"]["_source"]["target"]
+                            if target["type"] == "door"
+                        ),
+                        None,
+                    )
+                    if door is not None:
+                        door_id = door["id"]
+                        _LOGGER.info("Access log added via websocket %s", door_id)
+                        if door_id in self.doors:
+                            existing_door = self.doors[door_id]
+                            actor = update["data"]["_source"]["actor"]["display_name"]
+                            device_config = next(
+                                (
+                                    target
+                                    for target in update["data"]["_source"]["target"]
+                                    if target["type"] == "device_config"
+                                ),
+                                None,
+                            )
+                            if device_config is not None:
+                                access_type = device_config["display_name"]
+                                event = "access"
+                                event_attributes = {
+                                    "door_name": existing_door.name,
+                                    "door_id": door_id,
+                                    "actor": actor,
+                                    "type": ACCESS_EVENT.format(type=access_type),
+                                }
+                                _LOGGER.info(
+                                    "Door name %s with ID %s accessed by %s. Access type: %s",
+                                    existing_door.name,
+                                    door_id,
+                                    actor,
+                                    access_type,
+                                )
             if existing_door is not None:
-                existing_door.publish_updates()
+                asyncio.run_coroutine_threadsafe(
+                    existing_door.publish_updates(), self.loop
+                )
+                if event is not None and event_attributes is not None:
+                    asyncio.run_coroutine_threadsafe(
+                        existing_door.trigger_event(event, event_attributes), self.loop
+                    )
 
     def on_error(self, ws: websocket.WebSocketApp, error):
         """Handle errors in the websocket client."""

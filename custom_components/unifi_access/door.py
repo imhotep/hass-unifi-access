@@ -18,6 +18,10 @@ class UnifiAccessDoor:
     ) -> None:
         """Initialize door."""
         self._callbacks: set[Callable] = set()
+        self._event_listeners: dict[str, set] = {
+            "access": set(),
+            "doorbell_press": set(),
+        }
         self._is_locking = False
         self._is_unlocking = False
         self._hub = hub
@@ -75,7 +79,36 @@ class UnifiAccessDoor:
         """Remove previously registered callback."""
         self._callbacks.discard(callback)
 
-    def publish_updates(self) -> None:
+    async def publish_updates(self) -> None:
         """Schedule call all registered callbacks."""
         for callback in self._callbacks:
             callback()
+
+    def add_event_listener(
+        self, event: str, callback: Callable[[str, dict[str, str]], None]
+    ) -> None:
+        """Add event listener."""
+        if self._event_listeners.get(event) is not None:
+            self._event_listeners[event].add(callback)
+            _LOGGER.info("Registered event %s for door %s", event, self.name)
+
+    def remove_event_listener(
+        self, event: str, callback: Callable[[str, dict[str, str]], None]
+    ) -> None:
+        """Remove event listener."""
+        _LOGGER.info("Unregistered event %s for door %s", event, self.name)
+        self._event_listeners[event].discard(callback)
+
+    async def trigger_event(self, event: str, data: dict[str, str]):
+        """Trigger event."""
+        _LOGGER.info(
+            "Triggering event %s for door %s with data %s",
+            event,
+            self.name,
+            data,
+        )
+        for callback in self._event_listeners[event]:
+            callback(data["type"], data)
+            _LOGGER.info(
+                "Event %s type %s for door %s fired", event, data["type"], self.name
+            )
