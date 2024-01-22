@@ -1,6 +1,6 @@
 # Unifi Access Custom Integration for Home Assistant
 
-This is a basic integration of Unifi Access in [Home Assistant](https://homeassistant.io). If you have Unifi Access set up with UID this will *NOT* work
+This is a basic integration of [Unifi Access](https://ui.com/door-access) in [Home Assistant](https://homeassistant.io). If you have Unifi Access set up with UID this will *NOT* work. _Camera Feeds are currently not offered by the API and therefore **NOT** supported_.
 
 # Getting Unifi Access API Token
 - Log in to Unifi Access and Click on Security -> Advanced -> API Token
