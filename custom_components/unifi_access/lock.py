@@ -31,7 +31,7 @@ async def async_setup_entry(
     await coordinator.async_config_entry_first_refresh()
 
     async_add_entities(
-        UnifiDoorLockEntity(coordinator, key) for key, value in coordinator.data.items()
+        UnifiDoorLockEntity(coordinator, key) for key in coordinator.data
     )
 
 

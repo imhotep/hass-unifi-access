@@ -8,7 +8,7 @@ from homeassistant.core import HomeAssistant
 from .const import DOMAIN
 from .hub import UnifiAccessHub
 
-PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.LOCK]
+PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.LOCK, Platform.EVENT]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
