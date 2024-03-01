@@ -195,7 +195,6 @@ class UnifiAccessHub:
         """
         event = None
         event_attributes = None
-        # _LOGGER.info(f"Got update {message}")
         if "Hello" not in message:
             update = json.loads(message)
             existing_door = None
@@ -207,9 +206,10 @@ class UnifiAccessHub:
                         existing_door = self.doors[door_id]
                         existing_door.door_position_status = update["data"]["status"]
                         _LOGGER.info(
-                            "DPS Change of door %s with ID %s Updated",
+                            "DPS Change for existing door %s with ID %s status: %s",
                             existing_door.name,
                             door_id,
+                            update["data"]["status"],
                         )
                 case "access.data.device.remote_unlock":
                     door_id = update["data"]["unique_id"]
