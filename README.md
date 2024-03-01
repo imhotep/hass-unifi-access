@@ -53,7 +53,7 @@ An entity will get created for each door. Every time a door is accessed (entry, 
 ### Event metadata
 - door_name
 - door_id
-- actor # this is the name of the user that accessed the door
+- actor # this is the name of the user that accessed the door. If set to N/A that means UNAUTHORIZED ACCESS!
 - type # `unifi_access_entry` or `unifi_access_exit`
 
 # Example automation
