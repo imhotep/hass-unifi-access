@@ -2,8 +2,8 @@
 
 This module interacts with the Unifi Access API server.
 """
+
 import asyncio
-from datetime import timedelta
 import json
 import logging
 import ssl
@@ -15,10 +15,6 @@ from requests.exceptions import ConnectionError as ConnError, SSLError
 import urllib3
 import websocket
 
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-
 from .const import (
     ACCESS_EVENT,
     DEVICE_NOTIFICATIONS_URL,
@@ -29,16 +25,9 @@ from .const import (
     UNIFI_ACCESS_API_PORT,
 )
 from .door import UnifiAccessDoor
+from .errors import ApiAuthError, ApiError
 
 _LOGGER = logging.getLogger(__name__)
-
-
-class ApiAuthError(Exception):
-    """Raised when we can't authenticate with the API Token."""
-
-
-class ApiError(Exception):
-    """Raised when we have some trouble using the API."""
 
 
 class UnifiAccessHub:
@@ -373,29 +362,3 @@ class UnifiAccessHub:
         if self.verify_ssl is False:
             sslopt = {"cert_reqs": ssl.CERT_NONE}
         ws.run_forever(sslopt=sslopt, reconnect=5)
-
-
-class UnifiAccessCoordinator(DataUpdateCoordinator):
-    """Unifi Access Coordinator. This is mostly used for local polling."""
-
-    def __init__(self, hass: HomeAssistant, hub) -> None:
-        """Initialize Unifi Access Coordinator."""
-        update_interval = timedelta(seconds=3) if hub.use_polling is True else None
-
-        super().__init__(
-            hass,
-            _LOGGER,
-            name="Unifi Access Coordinator",
-            update_interval=update_interval,
-        )
-        self.hub = hub
-
-    async def _async_update_data(self):
-        """Handle Unifi Access Coordinator updates."""
-        try:
-            async with asyncio.timeout(10):
-                return await self.hass.async_add_executor_job(self.hub.update)
-        except ApiAuthError as err:
-            raise ConfigEntryAuthFailed from err
-        except ApiError as err:
-            raise UpdateFailed("Error communicating with API") from err
