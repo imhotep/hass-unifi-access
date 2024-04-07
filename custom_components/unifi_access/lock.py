@@ -1,10 +1,11 @@
 """Platform for sensor integration."""
+
 from __future__ import annotations
 
 import logging
 from typing import Any
 
-from homeassistant.components.lock import LockEntity
+from homeassistant.components.lock import LockEntity, LockEntityFeature
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -12,8 +13,9 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
+from .coordinator import UnifiAccessCoordinator
 from .door import UnifiAccessDoor
-from .hub import UnifiAccessCoordinator, UnifiAccessHub
+from .hub import UnifiAccessHub
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,18 +42,14 @@ class UnifiDoorLockEntity(CoordinatorEntity, LockEntity):
 
     should_poll = False
 
+    supported_features = LockEntityFeature.OPEN
+
     def __init__(self, coordinator, door_id) -> None:
         """Initialize Unifi Access Door Lock."""
         super().__init__(coordinator, context=id)
-        self.id = door_id
         self.door: UnifiAccessDoor = self.coordinator.data[door_id]
         self._attr_unique_id = self.door.id
         self._attr_name = self.door.name
-
-    @property
-    def available(self) -> bool:
-        """Gray out lock when it's unlocked."""
-        return self.door.is_locked
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -76,6 +74,14 @@ class UnifiDoorLockEntity(CoordinatorEntity, LockEntity):
     async def async_unlock(self, **kwargs: Any) -> None:
         """Unlock all or specified locks. A code to unlock the lock with may optionally be specified."""
         await self.hass.async_add_executor_job(self.door.unlock)
+
+    async def async_open(self, **kwargs: Any) -> None:
+        """Unlock all or specified locks. A code to unlock the lock with may optionally be specified."""
+        await self.hass.async_add_executor_job(self.door.open)
+
+    def lock(self, **kwargs: Any) -> None:
+        """Lock all or specified locks. A code to lock the lock with may optionally be specified."""
+        _LOGGER.warning("Locking is not supported by Unifi Access API")
 
     @property
     def is_locked(self) -> bool | None:

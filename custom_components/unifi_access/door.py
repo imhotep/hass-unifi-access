@@ -1,4 +1,5 @@
 """Unifi Access Door Module."""
+
 from collections.abc import Callable
 import logging
 
@@ -60,6 +61,10 @@ class UnifiAccessDoor:
     def is_unlocking(self):
         """Solely used for unlocking state when calling unlock."""
         return self._is_unlocking
+
+    def open(self) -> None:
+        """Open door."""
+        self.unlock()
 
     def unlock(self) -> None:
         """Unlock door."""

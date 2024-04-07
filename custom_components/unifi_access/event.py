@@ -1,4 +1,5 @@
 """Platform for sensor integration."""
+
 from __future__ import annotations
 
 import logging
@@ -16,8 +17,9 @@ from .const import (
     DOORBELL_START_EVENT,
     DOORBELL_STOP_EVENT,
 )
+from .coordinator import UnifiAccessCoordinator
 from .door import UnifiAccessDoor
-from .hub import UnifiAccessCoordinator, UnifiAccessHub
+from .hub import UnifiAccessHub
 
 _LOGGER = logging.getLogger(__name__)
 

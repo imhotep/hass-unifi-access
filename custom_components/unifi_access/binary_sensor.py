@@ -1,4 +1,5 @@
 """Platform for sensor integration."""
+
 from __future__ import annotations
 
 import logging
@@ -14,7 +15,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
-from .hub import UnifiAccessCoordinator, UnifiAccessHub
+from .coordinator import UnifiAccessCoordinator
+from .hub import UnifiAccessHub
 
 _LOGGER = logging.getLogger(__name__)
 
