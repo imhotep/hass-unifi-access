@@ -184,8 +184,9 @@ class UnifiAccessHub:
         """
         event = None
         event_attributes = None
-        if "Hello" not in message:
-            update = json.loads(message)
+        update = json.loads(message)
+        if update != "Hello":
+            _LOGGER.debug(f"Received message {message}")
             existing_door = None
             match update["event"]:
                 case "access.dps_change":
@@ -212,16 +213,33 @@ class UnifiAccessHub:
                             door_id,
                         )
                 case "access.data.device.update":
-                    door_id = update["data"]["door"]["unique_id"]
-                    _LOGGER.info("Device Update via websocket %s", door_id)
-                    if door_id in self.doors:
-                        existing_door = self.doors[door_id]
-                        self.update_door(door_id)
-                        _LOGGER.info(
-                            "Door name %s with ID %s updated",
-                            existing_door.name,
-                            door_id,
-                        )
+                    device_type = update["data"]["device_type"]
+                    if device_type == "UAH":
+                        door_id = update["data"]["door"]["unique_id"]
+                        _LOGGER.info("Device Update via websocket %s", door_id)
+                        if door_id in self.doors:
+                            existing_door = self.doors[door_id]
+                            self.update_door(door_id)
+                            _LOGGER.info(
+                                "Door name %s with ID %s updated",
+                                existing_door.name,
+                                door_id,
+                            )
+                    elif device_type == "UAH-Ent":
+                        for door_object in update["data"]["extensions"]:
+                            door_id = door_object["target_value"]
+                            _LOGGER.info("Device Update via websocket %s", door_id)
+                            if door_id in self.doors:
+                                existing_door = self.doors[door_id]
+                                self.update_door(door_id)
+                                _LOGGER.info(
+                                    "Door name %s with ID %s updated",
+                                    existing_door.name,
+                                    door_id,
+                                )
+                                asyncio.run_coroutine_threadsafe(
+                                    existing_door.publish_updates(), self.loop
+                                )
                 case "access.remote_view":
                     door_name = update["data"]["door_name"]
                     _LOGGER.info("Doorbell Press %s", door_name)
@@ -322,7 +340,7 @@ class UnifiAccessHub:
 
     def on_error(self, ws: websocket.WebSocketApp, error):
         """Handle errors in the websocket client."""
-        _LOGGER.error("Got error %s", error)
+        _LOGGER.exception("Got error %s", error)
 
     def on_open(self, ws: websocket.WebSocketApp):
         """Show message on connection."""
