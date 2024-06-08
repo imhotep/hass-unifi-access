@@ -7,8 +7,7 @@ from typing import Any
 
 import voluptuous as vol
 
-from homeassistant import config_entries
-from homeassistant.config_entries import ConfigFlowResult
+from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 
@@ -55,12 +54,10 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     return {"title": "Unifi Access Doors"}
 
 
-class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class UnifiAccessConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Unifi Access."""
 
     VERSION = 1
-
-    CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None

@@ -184,6 +184,7 @@ class UnifiAccessHub:
         """
         event = None
         event_attributes = None
+        event_done_callback = None
         if "Hello" not in message:
             update = json.loads(message)
             existing_door = None
@@ -213,15 +214,50 @@ class UnifiAccessHub:
                         )
                 case "access.data.device.update":
                     door_id = update["data"]["door"]["unique_id"]
-                    _LOGGER.info("Device Update via websocket %s", door_id)
+                    _LOGGER.info(
+                        "Device Update via websocket %s",
+                        door_id,
+                    )
                     if door_id in self.doors:
                         existing_door = self.doors[door_id]
-                        self.update_door(door_id)
                         _LOGGER.info(
-                            "Door name %s with ID %s updated",
+                            "Device update config for door %s",
                             existing_door.name,
-                            door_id,
                         )
+                        try:
+                            existing_door.door_position_status = (
+                                "close"
+                                if next(
+                                    config["value"]
+                                    for config in update["data"]["configs"]
+                                    if config["key"] == "input_state_dps"
+                                )
+                                == "on"
+                                else "open"
+                            )
+                            existing_door.door_lock_relay_status = (
+                                "unlock"
+                                if next(
+                                    config["value"]
+                                    for config in update["data"]["configs"]
+                                    if config["key"] == "input_state_rly-lock_dry"
+                                )
+                                == "on"
+                                else "lock"
+                            )
+                            _LOGGER.info(
+                                "Door name %s with ID %s updated. Locked: %s DPS: %s",
+                                existing_door.name,
+                                door_id,
+                                existing_door.door_lock_relay_status,
+                                existing_door.door_position_status,
+                            )
+                        except StopIteration:
+                            _LOGGER.info(
+                                "Ignoring update for door %s",
+                                existing_door.name,
+                            )
+
                 case "access.remote_view":
                     door_name = update["data"]["door_name"]
                     _LOGGER.info("Doorbell Press %s", door_name)
@@ -311,18 +347,61 @@ class UnifiAccessHub:
                                     actor,
                                     access_type,
                                 )
+                case "access.hw.door_bell":
+                    door_id = update["data"]["door_id"]
+                    door_name = update["data"]["door_name"]
+                    _LOGGER.info(
+                        "Hardware Doorbell Press %s door id %s",
+                        door_name,
+                        door_id,
+                    )
+                    if door_id in self.doors:
+                        existing_door = self.doors[door_id]
+                        if existing_door is not None:
+                            existing_door.doorbell_request_id = update["data"][
+                                "request_id"
+                            ]
+                            event = "doorbell_press"
+                            event_attributes = {
+                                "door_name": existing_door.name,
+                                "door_id": existing_door.id,
+                                "type": DOORBELL_START_EVENT,
+                            }
+
+                            # We don't seem to get a message that indicates the end of the doorbell being active
+                            # We just toggle the sensor for 2 seconds and return it to its original state
+                            def on_complete(_fut):
+                                existing_door.doorbell_request_id = None
+                                event = "doorbell_press"
+                                event_attributes = {
+                                    "door_name": existing_door.name,
+                                    "door_id": existing_door.id,
+                                    "type": DOORBELL_STOP_EVENT,
+                                }
+                                asyncio.sleep(2)
+                                existing_door.trigger_event(event, event_attributes)
+
+                            event_done_callback = on_complete
+                            _LOGGER.info(
+                                "Doorbell press on %s Request ID %s",
+                                door_name,
+                                update["data"]["request_id"],
+                            )
             if existing_door is not None:
                 asyncio.run_coroutine_threadsafe(
                     existing_door.publish_updates(), self.loop
                 )
                 if event is not None and event_attributes is not None:
-                    asyncio.run_coroutine_threadsafe(
-                        existing_door.trigger_event(event, event_attributes), self.loop
+                    task = asyncio.run_coroutine_threadsafe(
+                        existing_door.trigger_event(event, event_attributes),
+                        self.loop,
                     )
+                    if event_done_callback is not None:
+                        task.add_done_callback(event_done_callback)
 
     def on_error(self, ws: websocket.WebSocketApp, error):
         """Handle errors in the websocket client."""
-        _LOGGER.error("Got error %s", error)
+        _LOGGER.exception("Got error %s", error)
 
     def on_open(self, ws: websocket.WebSocketApp):
         """Show message on connection."""
