@@ -4,10 +4,10 @@
   "codeowners": ["@imhotep"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/imhotep/hass-unifi-access",
-  "issue_tracker": "https://github.com/imhotep/hass-unifi-access/issues",
+  "documentation": "https://www.home-assistant.io/integrations/unifi_access",
+  "homekit": {},
   "iot_class": "local_push",
-  "integration_type": "device",
-  "requirements": ["websocket-client==1.6.4", "requests==2.31.0"],
-  "version": "1.0.0"
+  "requirements": ["websocket-client==1.8.0", "requests==2.32.3"],
+  "ssdp": [],
+  "zeroconf": []
 }
