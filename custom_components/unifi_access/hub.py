@@ -213,50 +213,184 @@ class UnifiAccessHub:
                             door_id,
                         )
                 case "access.data.device.update":
-                    door_id = update["data"]["door"]["unique_id"]
-                    _LOGGER.info(
-                        "Device Update via websocket %s",
-                        door_id,
-                    )
-                    if door_id in self.doors:
-                        existing_door = self.doors[door_id]
+                    device_type = update["data"]["device_type"]
+                    if device_type == "UAH":
+                        door_id = update["data"]["door"]["unique_id"]
                         _LOGGER.info(
-                            "Device update config for door %s",
-                            existing_door.name,
+                            "Device Update via websocket %s",
+                            door_id,
                         )
-                        try:
-                            existing_door.door_position_status = (
-                                "close"
-                                if next(
-                                    config["value"]
-                                    for config in update["data"]["configs"]
-                                    if config["key"] == "input_state_dps"
-                                )
-                                == "on"
-                                else "open"
-                            )
-                            existing_door.door_lock_relay_status = (
-                                "unlock"
-                                if next(
-                                    config["value"]
-                                    for config in update["data"]["configs"]
-                                    if config["key"] == "input_state_rly-lock_dry"
-                                )
-                                == "on"
-                                else "lock"
-                            )
+                        if door_id in self.doors:
+                            existing_door = self.doors[door_id]
                             _LOGGER.info(
-                                "Door name %s with ID %s updated. Locked: %s DPS: %s",
-                                existing_door.name,
-                                door_id,
-                                existing_door.door_lock_relay_status,
-                                existing_door.door_position_status,
-                            )
-                        except StopIteration:
-                            _LOGGER.info(
-                                "Ignoring update for door %s",
+                                "Device update config for door %s",
                                 existing_door.name,
                             )
+                            try:
+                                existing_door.door_position_status = (
+                                    "close"
+                                    if next(
+                                        config["value"]
+                                        for config in update["data"]["configs"]
+                                        if config["key"] == "input_state_dps"
+                                    )
+                                    == "on"
+                                    else "open"
+                                )
+                                existing_door.door_lock_relay_status = (
+                                    "unlock"
+                                    if next(
+                                        config["value"]
+                                        for config in update["data"]["configs"]
+                                        if config["key"] == "input_state_rly-lock_dry"
+                                    )
+                                    == "on"
+                                    else "lock"
+                                )
+                                _LOGGER.info(
+                                    "Door name %s with ID %s updated. Locked: %s DPS: %s",
+                                    existing_door.name,
+                                    door_id,
+                                    existing_door.door_lock_relay_status,
+                                    existing_door.door_position_status,
+                                )
+                            except StopIteration:
+                                _LOGGER.info(
+                                    "Ignoring update for door %s",
+                                    existing_door.name,
+                                )
+                    elif device_type == "UGT":
+                        # UGT has 2 ports
+                        # Port 1 = vehicle gate, dps = data.config[input_gate_dps], relay = data.config[output_oper1_relay || output_oper2_relay]
+                        # Port 2 = pedestrian gate, dps = data.config[input_door_dps], relay = data.config[output_door_lock_relay]
+                        for ext in update["data"]["extensions"]:
+                            door_id = ext["target_value"]
+                            existing_door = self.doors[door_id]
+                            _LOGGER.info(
+                                "Device update config for door %s",
+                                existing_door.name,
+                            )
+
+                            dev_id = ext["device_id"]
+                            port = ext["source_id"]
+                            if port == "port1":
+                                try:
+                                    existing_door.door_position_status = (
+                                        "close"
+                                        if next(
+                                            config["value"]
+                                            for config in update["data"]["configs"]
+                                            if config["key"] == "input_gate_dps"
+                                        )
+                                        == "on"
+                                        else "open"
+                                    )
+                                    existing_door.door_lock_relay_status = (
+                                        "unlock"
+                                        if next(
+                                            config["value"]
+                                            for config in update["data"]["configs"]
+                                            if config["key"] == "output_oper1_relay"
+                                        )
+                                        == "on"
+                                        else "lock"
+                                    )
+                                    _LOGGER.info(
+                                        "Door name %s with ID %s updated. Locked: %s DPS: %s",
+                                        existing_door.name,
+                                        door_id,
+                                        existing_door.door_lock_relay_status,
+                                        existing_door.door_position_status,
+                                    )
+                                except StopIteration:
+                                    _LOGGER.info(
+                                        "Ignoring update for door %s",
+                                        existing_door.name,
+                                    )
+                            elif port == "port2":
+                                try:
+                                    existing_door.door_position_status = (
+                                        "close"
+                                        if next(
+                                            config["value"]
+                                            for config in update["data"]["configs"]
+                                            if config["key"] == "input_door_dps"
+                                        )
+                                        == "on"
+                                        else "open"
+                                    )
+                                    existing_door.door_lock_relay_status = (
+                                        "unlock"
+                                        if next(
+                                            config["value"]
+                                            for config in update["data"]["configs"]
+                                            if config["key"] == "output_door_lock_relay"
+                                        )
+                                        == "on"
+                                        else "lock"
+                                    )
+                                    _LOGGER.info(
+                                        "Door name %s with ID %s updated. Locked: %s DPS: %s",
+                                        existing_door.name,
+                                        door_id,
+                                        existing_door.door_lock_relay_status,
+                                        existing_door.door_position_status,
+                                    )
+                                except StopIteration:
+                                    _LOGGER.info(
+                                        "Ignoring update for door %s",
+                                        existing_door.name,
+                                    )
+                            else:
+                                pass # Raise exception
+                    elif device_type == "UAH-Ent":
+                        # UAH-Ent has 8 ports
+                        # Port X dps = data.config[input_dX_dps], relay = data.config[output_dX_lock_relay]
+                        for ext in update["data"]["extensions"]:
+                            door_id = ext["target_value"]
+                            existing_door = self.doors[door_id]
+                            _LOGGER.info(
+                                "Device update config for door %s",
+                                existing_door.name,
+                            )
+
+                            dev_id = ext["device_id"]
+                            port = ext["source_id"].replace("port", "")
+                            poskey = "input_d{}_dps".format(port)
+                            relaykey = "output_d{}_lock_relay".format(port)
+                            try:
+                                existing_door.door_position_status = (
+                                    "close"
+                                    if next(
+                                        config["value"]
+                                        for config in update["data"]["configs"]
+                                        if config["key"] == poskey
+                                    )
+                                    == "on"
+                                    else "open"
+                                )
+                                existing_door.door_lock_relay_status = (
+                                    "unlock"
+                                    if next(
+                                        config["value"]
+                                        for config in update["data"]["configs"]
+                                        if config["key"] == relaykey
+                                    )
+                                    == "on"
+                                    else "lock"
+                                )
+                                _LOGGER.info(
+                                    "Door name %s with ID %s updated. Locked: %s DPS: %s",
+                                    existing_door.name,
+                                    door_id,
+                                    existing_door.door_lock_relay_status,
+                                    existing_door.door_position_status,
+                                )
+                            except StopIteration:
+                                _LOGGER.info(
+                                    "Ignoring update for door %s",
+                                    existing_door.name,
+                                )
 
                 case "access.remote_view":
                     door_name = update["data"]["door_name"]
