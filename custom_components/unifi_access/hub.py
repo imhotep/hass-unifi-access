@@ -186,8 +186,10 @@ class UnifiAccessHub:
         event_attributes = None
         event_done_callback = None
         if "Hello" not in message:
+            _LOGGER.debug(f"Received message {message}")
             update = json.loads(message)
             existing_door = None
+            changed_doors = []
             match update["event"]:
                 case "access.dps_change":
                     door_id = update["data"]["door_id"]
@@ -201,6 +203,7 @@ class UnifiAccessHub:
                             door_id,
                             update["data"]["status"],
                         )
+                        changed_doors.append(existing_door)
                 case "access.data.device.remote_unlock":
                     door_id = update["data"]["unique_id"]
                     _LOGGER.info("Remote Unlock %s", door_id)
@@ -212,6 +215,7 @@ class UnifiAccessHub:
                             existing_door.name,
                             door_id,
                         )
+                        changed_doors.append(existing_door)
                 case "access.data.device.update":
                     device_type = update["data"]["device_type"]
                     if device_type == "UAH":
@@ -254,6 +258,7 @@ class UnifiAccessHub:
                                     existing_door.door_lock_relay_status,
                                     existing_door.door_position_status,
                                 )
+                                changed_doors.append(existing_door)
                             except StopIteration:
                                 _LOGGER.info(
                                     "Ignoring update for door %s",
@@ -302,6 +307,7 @@ class UnifiAccessHub:
                                         existing_door.door_lock_relay_status,
                                         existing_door.door_position_status,
                                     )
+                                    changed_doors.append(existing_door)
                                 except StopIteration:
                                     _LOGGER.info(
                                         "Ignoring update for door %s",
@@ -336,6 +342,7 @@ class UnifiAccessHub:
                                         existing_door.door_lock_relay_status,
                                         existing_door.door_position_status,
                                     )
+                                    changed_doors.append(existing_door)
                                 except StopIteration:
                                     _LOGGER.info(
                                         "Ignoring update for door %s",
@@ -386,6 +393,7 @@ class UnifiAccessHub:
                                     existing_door.door_lock_relay_status,
                                     existing_door.door_position_status,
                                 )
+                                changed_doors.append(existing_door)
                             except StopIteration:
                                 _LOGGER.info(
                                     "Ignoring update for door %s",
@@ -416,6 +424,7 @@ class UnifiAccessHub:
                             door_name,
                             update["data"]["request_id"],
                         )
+                        changed_doors.append(existing_door)
                 case "access.remote_view.change":
                     doorbell_request_id = update["data"]["remote_call_request_id"]
                     _LOGGER.info(
@@ -442,6 +451,7 @@ class UnifiAccessHub:
                             existing_door.name,
                             doorbell_request_id,
                         )
+                        changed_doors.append(existing_door)
                 case "access.logs.add":
                     door = next(
                         (
@@ -481,6 +491,7 @@ class UnifiAccessHub:
                                     actor,
                                     access_type,
                                 )
+                            changed_doors.append(existing_door)
                 case "access.hw.door_bell":
                     door_id = update["data"]["door_id"]
                     door_name = update["data"]["door_name"]
@@ -521,17 +532,22 @@ class UnifiAccessHub:
                                 door_name,
                                 update["data"]["request_id"],
                             )
-            if existing_door is not None:
-                asyncio.run_coroutine_threadsafe(
-                    existing_door.publish_updates(), self.loop
-                )
-                if event is not None and event_attributes is not None:
-                    task = asyncio.run_coroutine_threadsafe(
-                        existing_door.trigger_event(event, event_attributes),
-                        self.loop,
+                            changed_doors.append(existing_door)
+            if changed_doors:
+                for existing_door in changed_doors:
+                    asyncio.run_coroutine_threadsafe(
+                        existing_door.publish_updates(), self.loop
                     )
-                    if event_done_callback is not None:
-                        task.add_done_callback(event_done_callback)
+                    # Doing this relies on the idea that a single message will only have one message_type
+                    # and that a given message will only update events if a single door was updated.
+                    # Refactor would be required if that doesn't hold true.
+                    if event is not None and event_attributes is not None:
+                        task = asyncio.run_coroutine_threadsafe(
+                            existing_door.trigger_event(event, event_attributes),
+                            self.loop,
+                        )
+                        if event_done_callback is not None:
+                            task.add_done_callback(event_done_callback)
 
     def on_error(self, ws: websocket.WebSocketApp, error):
         """Handle errors in the websocket client."""
