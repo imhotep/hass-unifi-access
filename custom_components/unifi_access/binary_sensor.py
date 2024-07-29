@@ -49,7 +49,6 @@ class UnifiDoorStatusEntity(CoordinatorEntity, BinarySensorEntity):
         """Initialize DPS Entity."""
         super().__init__(coordinator, context=door_id)
         self._attr_device_class = BinarySensorDeviceClass.DOOR
-        self.id = door_id
         self.door = self.coordinator.data[door_id]
         self._attr_unique_id = self.door.id
         self.device_name = self.door.name
@@ -97,7 +96,6 @@ class UnifiDoorbellStatusEntity(CoordinatorEntity, BinarySensorEntity):
         """Initialize Doorbell Entity."""
         super().__init__(coordinator, context=door_id)
         self._attr_device_class = BinarySensorDeviceClass.OCCUPANCY
-        self.id = door_id
         self.door = self.coordinator.data[door_id]
         self._attr_unique_id = f"doorbell_{self.door.id}"
         self.device_name = self.door.name

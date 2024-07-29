@@ -92,7 +92,6 @@ class DoorbellPressedEventEntity(EventEntity):
     def __init__(self, hass: HomeAssistant, door) -> None:
         """Initialize Unifi Access Doorbell Event."""
         self.hass = hass
-        self.id = door.id
         self.door: UnifiAccessDoor = door
         self._attr_unique_id = f"{self.door.id}_doorbell_press"
         self._attr_name = f"{self.door.name} Doorbell Press"

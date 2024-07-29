@@ -8,6 +8,7 @@ import json
 import logging
 import ssl
 from threading import Thread
+from typing import Any, Literal, TypedDict, cast
 from urllib.parse import urlparse
 
 from requests import request
@@ -18,9 +19,11 @@ import websocket
 from .const import (
     ACCESS_EVENT,
     DEVICE_NOTIFICATIONS_URL,
+    DOOR_LOCK_RULE_URL,
     DOOR_UNLOCK_URL,
     DOORBELL_START_EVENT,
     DOORBELL_STOP_EVENT,
+    DOORS_EMERGENCY_URL,
     DOORS_URL,
     UNIFI_ACCESS_API_PORT,
 )
@@ -28,6 +31,28 @@ from .door import UnifiAccessDoor
 from .errors import ApiAuthError, ApiError
 
 _LOGGER = logging.getLogger(__name__)
+
+type EmergencyData = dict[str, bool]
+
+
+class DoorLockRule(TypedDict):
+    """DoorLockRule.
+
+    This class defines the different locking rules.
+    """
+
+    type: Literal["keep_lock", "keep_unlock", "custom", "reset", "lock_early"]
+    interval: int
+
+
+class DoorLockRuleStatus(TypedDict):
+    """DoorLockRuleStatus.
+
+    This class defines the active locking rule status.
+    """
+
+    type: Literal["schedule", "keep_lock", "keep_unlock", "custom", "lock_early"]
+    ended_time: int
 
 
 class UnifiAccessHub:
@@ -67,6 +92,8 @@ class UnifiAccessHub:
             "Connection": "Upgrade",
         }
         self._doors: dict[str, UnifiAccessDoor] = {}
+        self.evacuation = False
+        self.lockdown = False
         self.update_t = None
         self.loop = asyncio.get_event_loop()
 
@@ -92,17 +119,22 @@ class UnifiAccessHub:
 
         for _i, door in enumerate(data):
             door_id = door["id"]
+            door_lock_rule = self.get_door_lock_rule(door_id)
             if door_id in self.doors:
                 existing_door = self.doors[door_id]
                 existing_door.name = door["name"]
                 existing_door.door_position_status = door["door_position_status"]
                 existing_door.door_lock_relay_status = door["door_lock_relay_status"]
+                existing_door.door_lock_rule = door_lock_rule["type"]
+                existing_door.door_lock_ended_time = door_lock_rule["ended_time"]
             elif door["is_bind_hub"] is True:
                 self._doors[door_id] = UnifiAccessDoor(
                     door_id=door["id"],
                     name=door["name"],
                     door_position_status=door["door_position_status"],
                     door_lock_relay_status=door["door_lock_relay_status"],
+                    door_lock_rule=door_lock_rule["type"],
+                    door_lock_rule_ended_time=door_lock_rule["ended_time"],
                     hub=self,
                 )
         if self.update_t is None and self.use_polling is False:
@@ -150,6 +182,45 @@ class UnifiAccessHub:
 
         return "ok"
 
+    def get_door_lock_rule(self, door_id: str) -> DoorLockRule:
+        """Get door lock rule."""
+        _LOGGER.debug("Getting door lock rule for door_id %s", door_id)
+        data = self._make_http_request(
+            f"{self.host}{DOOR_LOCK_RULE_URL}".format(door_id=door_id)
+        )
+        _LOGGER.debug("Got door lock rule for door_id %s %s", door_id, data)
+        return cast(DoorLockRule, data)
+
+    def set_door_lock_rule(self, door_id: str, door_lock_rule: DoorLockRule) -> None:
+        """Set door lock rule."""
+        _LOGGER.info(
+            "Setting door lock rule for Door ID %s %s", door_id, door_lock_rule
+        )
+        self._make_http_request(
+            f"{self.host}{DOOR_LOCK_RULE_URL}".format(door_id=door_id),
+            "PUT",
+            door_lock_rule,
+        )
+        self.doors[door_id].lock_rule = door_lock_rule["type"]
+        if door_lock_rule["type"] == "custom":
+            self.doors[door_id].interval = door_lock_rule["interval"]
+
+    def get_doors_emergency_status(self) -> EmergencyData:
+        """Get doors emergency status."""
+        _LOGGER.debug("Getting doors emergency status")
+        data = self._make_http_request(f"{self.host}{DOORS_EMERGENCY_URL}")
+        self.evacuation = data["evacuation"]
+        self.lockdown = data["lockdown"]
+        _LOGGER.debug("Got doors emergency status %s", data)
+        return data
+
+    def set_doors_emergency_status(self, emergency_data: EmergencyData) -> None:
+        """Set doors emergency status."""
+        _LOGGER.info("Setting doors emergency status %s", emergency_data)
+        self._make_http_request(
+            f"{self.host}{DOORS_EMERGENCY_URL}", "PUT", emergency_data
+        )
+
     def unlock_door(self, door_id: str) -> None:
         """Test if we can authenticate with the host."""
         _LOGGER.info("Unlocking door with id %s", door_id)
@@ -157,13 +228,17 @@ class UnifiAccessHub:
             f"{self.host}{DOOR_UNLOCK_URL}".format(door_id=door_id), "PUT"
         )
 
-    def _make_http_request(self, url, method="GET") -> dict:
+    def _make_http_request(self, url, method="GET", data=None) -> dict:
         """Make HTTP request to Unifi Access API server."""
+        _LOGGER.debug(
+            "Making HTTP %s Request with URL %s and data %s", method, url, data
+        )
         r = request(
             method,
             url,
             headers=self._http_headers,
             verify=self.verify_ssl,
+            json=data,
             timeout=10,
         )
 
@@ -174,6 +249,8 @@ class UnifiAccessHub:
             raise ApiError
 
         response = r.json()
+
+        _LOGGER.debug("HTTP Response %s", response)
 
         return response["data"]
 
@@ -186,6 +263,7 @@ class UnifiAccessHub:
         event_attributes = None
         event_done_callback = None
         if "Hello" not in message:
+            # _LOGGER.debug("Websocket Message %s", message)
             update = json.loads(message)
             existing_door = None
             match update["event"]:
@@ -245,19 +323,39 @@ class UnifiAccessHub:
                                 == "on"
                                 else "lock"
                             )
+                        except StopIteration:
                             _LOGGER.info(
-                                "Door name %s with ID %s updated. Locked: %s DPS: %s",
+                                "No DPS Config for %s, trying lock rules",
+                                existing_door.name,
+                            )
+                        else:
+                            existing_door.lock_rule = next(
+                                (
+                                    config["value"]
+                                    for config in update["data"]["configs"]
+                                    # if config["key"] == "temp_lock_type"
+                                    if config["key"] == "lock_type"
+                                ),
+                                "",
+                            )
+                            existing_door.lock_rule_ended_time = next(
+                                (
+                                    config["value"]
+                                    for config in update["data"]["configs"]
+                                    if config["key"] == "lock_end_time"
+                                ),
+                                0,
+                            )
+                        finally:
+                            _LOGGER.info(
+                                "Door name %s with ID %s updated. Locked: %s DPS: %s, Lock Rule: %s, Lock Rule Ended Time %s",
                                 existing_door.name,
                                 door_id,
                                 existing_door.door_lock_relay_status,
                                 existing_door.door_position_status,
+                                existing_door.lock_rule,
+                                existing_door.lock_rule_ended_time,
                             )
-                        except StopIteration:
-                            _LOGGER.info(
-                                "Ignoring update for door %s",
-                                existing_door.name,
-                            )
-
                 case "access.remote_view":
                     door_name = update["data"]["door_name"]
                     _LOGGER.info("Doorbell Press %s", door_name)
@@ -387,6 +485,8 @@ class UnifiAccessHub:
                                 door_name,
                                 update["data"]["request_id"],
                             )
+                case _:
+                    _LOGGER.info("Got unhandled websocket message %s", update["event"])
             if existing_door is not None:
                 asyncio.run_coroutine_threadsafe(
                     existing_door.publish_updates(), self.loop
@@ -414,7 +514,7 @@ class UnifiAccessHub:
             close_status_code,
             close_msg,
         )
-        sslopt = None
+        sslopt: dict[Any, Any]
         if self.verify_ssl is False:
             sslopt = {"cert_reqs": ssl.CERT_NONE}
         ws.run_forever(sslopt=sslopt, reconnect=5)
