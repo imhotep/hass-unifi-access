@@ -50,13 +50,14 @@ class TemporaryLockRuleSensorEntity(SensorEntity):
         return DeviceInfo(
             identifiers={(DOMAIN, self.door.id)},
             name=self.door.name,
-            model="UAH",
+            model=self.door.hub_type,
             manufacturer="Unifi",
         )
 
     @property
     def native_value(self) -> str:
         """Get native value."""
+        # TODO add end time to native value with converted timezone from self.door.lock_rule_ended_time and format as string # pylint: disable=fixme
         return self.door.lock_rule
 
     async def async_added_to_hass(self) -> None:

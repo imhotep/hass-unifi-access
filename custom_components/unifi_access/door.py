@@ -28,6 +28,7 @@ class UnifiAccessDoor:
         self._is_locking = False
         self._is_unlocking = False
         self._hub = hub
+        self.hub_type = "UAH"
         self._id = door_id
         self.name = name
         self.door_position_status = door_position_status

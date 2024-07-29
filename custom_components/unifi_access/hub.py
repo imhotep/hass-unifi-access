@@ -147,7 +147,7 @@ class UnifiAccessHub:
         _LOGGER.info("Getting door update from Unifi Access with id %s", door_id)
         updated_door = self._make_http_request(f"{self.host}{DOORS_URL}/{door_id}")
         door_id = updated_door["id"]
-        _LOGGER.info("Got door update %s", updated_door)
+        _LOGGER.debug("got door update %s", updated_door)
         if door_id in self.doors:
             existing_door: UnifiAccessDoor = self.doors[door_id]
             existing_door.door_lock_relay_status = updated_door[
@@ -155,7 +155,7 @@ class UnifiAccessHub:
             ]
             existing_door.door_position_status = updated_door["door_position_status"]
             existing_door.name = updated_door["name"]
-            _LOGGER.info("Door %s updated", door_id)
+            _LOGGER.debug("door %s updated", door_id)
 
     def authenticate(self, api_token: str) -> str:
         """Test if we can authenticate with the host."""
@@ -254,6 +254,177 @@ class UnifiAccessHub:
 
         return response["data"]
 
+    def _handle_UAH_config_update(self, update, device_type):
+        """Process UAH config update."""
+        door_id = update["data"]["door"]["unique_id"]
+        _LOGGER.debug(
+            "access.data.device.update: door id %s, device type %s",
+            door_id,
+            device_type,
+        )
+        if door_id in self.doors:
+            existing_door = self.doors[door_id]
+            existing_door.hub_type = device_type
+            _LOGGER.debug(
+                "updating config for door name %s, id %s",
+                existing_door.name,
+                door_id,
+            )
+            existing_door.door_position_status = (
+                "close"
+                if next(
+                    (
+                        config["value"]
+                        for config in update["data"]["configs"]
+                        if config["key"] == "input_state_dps"
+                    ),
+                    "off",
+                )
+                == "on"
+                else "open"
+            )
+            existing_door.door_lock_relay_status = (
+                "unlock"
+                if next(
+                    (
+                        config["value"]
+                        for config in update["data"]["configs"]
+                        if config["key"] == "input_state_rly-lock_dry"
+                    ),
+                    "off",
+                )
+                == "on"
+                else "lock"
+            )
+            existing_door.lock_rule = next(
+                (
+                    config["value"]
+                    for config in update["data"]["configs"]
+                    # if config["key"] == "temp_lock_type"
+                    if config["key"] == "lock_type"
+                ),
+                "",
+            )
+            existing_door.lock_rule_ended_time = next(
+                (
+                    config["value"]
+                    for config in update["data"]["configs"]
+                    if config["key"] == "lock_end_time"
+                ),
+                0,
+            )
+            return existing_door
+
+    def _handle_UAH_Ent_config_update(self, update, device_type):
+        """Process UAH-Ent config update."""
+        # UAH-Ent has 8 ports
+        # Port X dps = data.config[input_dX_dps], relay = data.config[output_dX_lock_relay]
+        for ext in update["data"]["extensions"]:
+            door_id = ext["target_value"]
+            # dev_id = ext["device_id"]
+            existing_door = self.doors[door_id]
+            existing_door.hub_type = device_type
+            _LOGGER.debug(
+                "access.data.device.update: door id %s, device type %s",
+                door_id,
+                device_type,
+            )
+            port = ext["source_id"].replace("port", "")
+            poskey = f"input_d{port}_dps"
+            relaykey = f"output_d{port}_lock_relay"
+            existing_door.door_position_status = (
+                "close"
+                if next(
+                    (
+                        config["value"]
+                        for config in update["data"]["configs"]
+                        if config["key"] == poskey
+                    ),
+                    "off",
+                )
+                == "on"
+                else "open"
+            )
+            existing_door.door_lock_relay_status = (
+                "unlock"
+                if next(
+                    (
+                        config["value"]
+                        for config in update["data"]["configs"]
+                        if config["key"] == relaykey
+                    ),
+                    "off",
+                )
+                == "on"
+                else "lock"
+            )
+            return existing_door
+            # TODO find config keys for temporary lock rules and their ended time # pylint: disable=fixme
+
+    def _handle_UGT_config_update(self, update, device_type):
+        """Process UGT config update."""
+        # UGT has 2 ports
+        # Port 1 = vehicle gate, dps = data.config[input_gate_dps], relay = data.config[output_oper1_relay || output_oper2_relay]
+        # Port 2 = pedestrian gate, dps = data.config[input_door_dps], relay = data.config[output_door_lock_relay]
+        for ext in update["data"]["extensions"]:
+            door_id = ext["target_value"]
+            existing_door = self.doors[door_id]
+            existing_door.hub_type = device_type
+            _LOGGER.debug(
+                "access.data.device.update: door id %s, device type %s",
+                door_id,
+                device_type,
+            )
+            # dev_id = ext["device_id"]
+            port = ext["source_id"]
+            dps_config_key = ""
+            dlrs_config_key = ""
+            if port == "port1":
+                dps_config_key = "input_gate_dps"
+                dlrs_config_key = "output_oper1_relay"
+            elif port == "port2":
+                dps_config_key = "input_door_dps"
+                dlrs_config_key = "output_door_lock_relay"
+            if dps_config_key and dlrs_config_key:
+                existing_door.door_position_status = (
+                    "close"
+                    if next(
+                        (
+                            config["value"]
+                            for config in update["data"]["configs"]
+                            if config["key"] == dps_config_key
+                        ),
+                        "off",
+                    )
+                    == "on"
+                    else "open"
+                )
+                existing_door.door_lock_relay_status = (
+                    "unlock"
+                    if next(
+                        (
+                            config["value"]
+                            for config in update["data"]["configs"]
+                            if config["key"] == dlrs_config_key
+                        ),
+                        "off",
+                    )
+                    == "on"
+                    else "lock"
+                )
+                # TODO find config keys for temporary lock rules and their ended time
+                return existing_door
+
+    def _handle_config_update(self, update, device_type):
+        """Process config update."""
+        match device_type:
+            case "UAH":
+                return self._handle_UAH_config_update(update, device_type)
+            case "UAH-Ent":
+                return self._handle_UAH_Ent_config_update(update, device_type)
+            case "UGT":
+                return self._handle_UGT_config_update(update, device_type)
+
     def on_message(self, ws: websocket.WebSocketApp, message):
         """Handle messages received on the websocket client.
 
@@ -263,22 +434,24 @@ class UnifiAccessHub:
         event_attributes = None
         event_done_callback = None
         if "Hello" not in message:
-            # _LOGGER.debug("Websocket Message %s", message)
+            _LOGGER.debug("websocket message received %s", message)
             update = json.loads(message)
             existing_door = None
+            changed_doors = []
             match update["event"]:
                 case "access.dps_change":
                     door_id = update["data"]["door_id"]
-                    _LOGGER.info("DPS Change %s", door_id)
+                    _LOGGER.info("DPS update for door id %s", door_id)
                     if door_id in self.doors:
                         existing_door = self.doors[door_id]
                         existing_door.door_position_status = update["data"]["status"]
                         _LOGGER.info(
-                            "DPS Change for existing door %s with ID %s status: %s",
+                            "DPS update for existing door %s with id %s status: %s",
                             existing_door.name,
                             door_id,
                             update["data"]["status"],
                         )
+                        changed_doors.append(existing_door)
                 case "access.data.device.remote_unlock":
                     door_id = update["data"]["unique_id"]
                     _LOGGER.info("Remote Unlock %s", door_id)
@@ -286,79 +459,30 @@ class UnifiAccessHub:
                         existing_door = self.doors[door_id]
                         existing_door.door_lock_relay_status = "unlock"
                         _LOGGER.info(
-                            "Remote Unlock of door %s with ID %s updated",
+                            "Remote unlock of door %s with id %s",
                             existing_door.name,
                             door_id,
                         )
+                        changed_doors.append(existing_door)
                 case "access.data.device.update":
-                    door_id = update["data"]["door"]["unique_id"]
-                    _LOGGER.info(
-                        "Device Update via websocket %s",
-                        door_id,
-                    )
-                    if door_id in self.doors:
-                        existing_door = self.doors[door_id]
+                    device_type = update["data"]["device_type"]
+                    existing_door = self._handle_config_update(update, device_type)
+                    if existing_door:
+                        changed_doors.append(existing_door)
                         _LOGGER.info(
-                            "Device update config for door %s",
+                            "Device update on %s door name %s with id %s config updated. locked: %s dps: %s, lock rule: %s, lock rule ended time %s",
+                            device_type,
                             existing_door.name,
+                            existing_door.id,
+                            existing_door.door_lock_relay_status,
+                            existing_door.door_position_status,
+                            existing_door.lock_rule,
+                            existing_door.lock_rule_ended_time,
                         )
-                        try:
-                            existing_door.door_position_status = (
-                                "close"
-                                if next(
-                                    config["value"]
-                                    for config in update["data"]["configs"]
-                                    if config["key"] == "input_state_dps"
-                                )
-                                == "on"
-                                else "open"
-                            )
-                            existing_door.door_lock_relay_status = (
-                                "unlock"
-                                if next(
-                                    config["value"]
-                                    for config in update["data"]["configs"]
-                                    if config["key"] == "input_state_rly-lock_dry"
-                                )
-                                == "on"
-                                else "lock"
-                            )
-                        except StopIteration:
-                            _LOGGER.info(
-                                "No DPS Config for %s, trying lock rules",
-                                existing_door.name,
-                            )
-                        else:
-                            existing_door.lock_rule = next(
-                                (
-                                    config["value"]
-                                    for config in update["data"]["configs"]
-                                    # if config["key"] == "temp_lock_type"
-                                    if config["key"] == "lock_type"
-                                ),
-                                "",
-                            )
-                            existing_door.lock_rule_ended_time = next(
-                                (
-                                    config["value"]
-                                    for config in update["data"]["configs"]
-                                    if config["key"] == "lock_end_time"
-                                ),
-                                0,
-                            )
-                        finally:
-                            _LOGGER.info(
-                                "Door name %s with ID %s updated. Locked: %s DPS: %s, Lock Rule: %s, Lock Rule Ended Time %s",
-                                existing_door.name,
-                                door_id,
-                                existing_door.door_lock_relay_status,
-                                existing_door.door_position_status,
-                                existing_door.lock_rule,
-                                existing_door.lock_rule_ended_time,
-                            )
+
                 case "access.remote_view":
                     door_name = update["data"]["door_name"]
-                    _LOGGER.info("Doorbell Press %s", door_name)
+                    _LOGGER.debug("access.remote_view %s", door_name)
                     existing_door = next(
                         (
                             door
@@ -366,7 +490,7 @@ class UnifiAccessHub:
                             if door.name == door_name
                         ),
                         None,
-                    )
+                    )  # FIXME this is likely unreliable. API does not seem to provide door id forthis access.remote_view
                     if existing_door is not None:
                         existing_door.doorbell_request_id = update["data"]["request_id"]
                         event = "doorbell_press"
@@ -376,14 +500,15 @@ class UnifiAccessHub:
                             "type": DOORBELL_START_EVENT,
                         }
                         _LOGGER.info(
-                            "Doorbell press on %s Request ID %s",
+                            "Doorbell press on %s request id %s",
                             door_name,
                             update["data"]["request_id"],
                         )
+                        changed_doors.append(existing_door)
                 case "access.remote_view.change":
                     doorbell_request_id = update["data"]["remote_call_request_id"]
-                    _LOGGER.info(
-                        "Doorbell press stopped. Request ID %s", doorbell_request_id
+                    _LOGGER.debug(
+                        "access.remote_view.change request id %s", doorbell_request_id
                     )
                     existing_door = next(
                         (
@@ -402,11 +527,13 @@ class UnifiAccessHub:
                             "type": DOORBELL_STOP_EVENT,
                         }
                         _LOGGER.info(
-                            "Doorbell press stopped on %s Request ID %s",
+                            "Doorbell press stopped on %s request id %s",
                             existing_door.name,
                             doorbell_request_id,
                         )
+                        changed_doors.append(existing_door)
                 case "access.logs.add":
+                    _LOGGER.debug("access.logs.add %s", update["data"])
                     door = next(
                         (
                             target
@@ -417,7 +544,7 @@ class UnifiAccessHub:
                     )
                     if door is not None:
                         door_id = door["id"]
-                        _LOGGER.info("Access log added via websocket %s", door_id)
+                        _LOGGER.debug("access log added for door id %s", door_id)
                         if door_id in self.doors:
                             existing_door = self.doors[door_id]
                             actor = update["data"]["_source"]["actor"]["display_name"]
@@ -439,12 +566,13 @@ class UnifiAccessHub:
                                     "type": ACCESS_EVENT.format(type=access_type),
                                 }
                                 _LOGGER.info(
-                                    "Door name %s with ID %s accessed by %s. Access type: %s",
+                                    "Door name %s with id %s accessed by %s. access type: %s",
                                     existing_door.name,
                                     door_id,
                                     actor,
                                     access_type,
                                 )
+                            changed_doors.append(existing_door)
                 case "access.hw.door_bell":
                     door_id = update["data"]["door_id"]
                     door_name = update["data"]["door_name"]
@@ -481,27 +609,33 @@ class UnifiAccessHub:
 
                             event_done_callback = on_complete
                             _LOGGER.info(
-                                "Doorbell press on %s Request ID %s",
+                                "Hardware doorbell press on %s request id %s",
                                 door_name,
                                 update["data"]["request_id"],
                             )
+                            changed_doors.append(existing_door)
                 case _:
-                    _LOGGER.info("Got unhandled websocket message %s", update["event"])
-            if existing_door is not None:
-                asyncio.run_coroutine_threadsafe(
-                    existing_door.publish_updates(), self.loop
-                )
-                if event is not None and event_attributes is not None:
-                    task = asyncio.run_coroutine_threadsafe(
-                        existing_door.trigger_event(event, event_attributes),
-                        self.loop,
+                    _LOGGER.debug("unhandled websocket message %s", update["event"])
+
+            if changed_doors:
+                for existing_door in changed_doors:
+                    asyncio.run_coroutine_threadsafe(
+                        existing_door.publish_updates(), self.loop
                     )
-                    if event_done_callback is not None:
-                        task.add_done_callback(event_done_callback)
+                    # Doing this relies on the idea that a single message will only have one message_type
+                    # and that a given message will only update events if a single door was updated.
+                    # Refactor would be required if that doesn't hold true.
+                    if event is not None and event_attributes is not None:
+                        task = asyncio.run_coroutine_threadsafe(
+                            existing_door.trigger_event(event, event_attributes),
+                            self.loop,
+                        )
+                        if event_done_callback is not None:
+                            task.add_done_callback(event_done_callback)
 
     def on_error(self, ws: websocket.WebSocketApp, error):
         """Handle errors in the websocket client."""
-        _LOGGER.exception("Got error %s", error)
+        _LOGGER.exception("Got websocket error %s", error)
 
     def on_open(self, ws: websocket.WebSocketApp):
         """Show message on connection."""
@@ -524,6 +658,7 @@ class UnifiAccessHub:
         self.update_t = Thread(target=self.listen_for_updates)
         self.update_t.daemon = True
         self.update_t.start()
+        _LOGGER.info("Started websocket client in a new thread")
 
     def listen_for_updates(self):
         """Create a websocket client and start listening for updates."""

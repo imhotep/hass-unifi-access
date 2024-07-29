@@ -1,7 +1,5 @@
 """Platform for select integration."""
 
-import logging
-
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -13,8 +11,6 @@ from .const import DOMAIN
 from .coordinator import UnifiAccessCoordinator
 from .door import UnifiAccessDoor
 from .hub import UnifiAccessHub
-
-_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -66,7 +62,7 @@ class TemporaryLockRuleSelectEntity(CoordinatorEntity, SelectEntity):
         return DeviceInfo(
             identifiers={(DOMAIN, self.door.id)},
             name=self.door.name,
-            model="UAH",
+            model=self.door.hub_type,
             manufacturer="Unifi",
         )
 
@@ -78,11 +74,6 @@ class TemporaryLockRuleSelectEntity(CoordinatorEntity, SelectEntity):
     def _update_options(self):
         "Update Door Lock Rules."
         self._attr_current_option = self.coordinator.data[self.door.id].lock_rule
-        _LOGGER.debug(
-            "SelectEntity Update Lock Rule: %s, Current Options %s",
-            self.coordinator.data[self.door.id].lock_rule,
-            self._attr_options,
-        )
         if (
             self._attr_current_option != "schedule"
             and "lock_early" in self._attr_options

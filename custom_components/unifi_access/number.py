@@ -55,7 +55,7 @@ class TemporaryLockRuleIntervalNumberEntity(RestoreNumber):
         return DeviceInfo(
             identifiers={(DOMAIN, self.door.id)},
             name=self.door.name,
-            model="UAH",
+            model=self.door.hub_type,
             manufacturer="Unifi",
         )
 
