@@ -27,7 +27,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     hub.set_api_token(entry.data["api_token"])
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = hub
-
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True

@@ -27,6 +27,7 @@ class UnifiAccessCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             name="Unifi Access Coordinator",
+            always_update=False,
             update_interval=update_interval,
         )
         self.hub = hub

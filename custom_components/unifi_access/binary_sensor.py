@@ -44,6 +44,8 @@ class UnifiDoorStatusEntity(CoordinatorEntity, BinarySensorEntity):
     """Unifi Access DPS Entity."""
 
     should_poll = False
+    _attr_translation_key = "access_door_dps"
+    _attr_has_entity_name = True
 
     def __init__(self, coordinator, door_id) -> None:
         """Initialize DPS Entity."""
@@ -52,7 +54,6 @@ class UnifiDoorStatusEntity(CoordinatorEntity, BinarySensorEntity):
         self.door = self.coordinator.data[door_id]
         self._attr_unique_id = self.door.id
         self.device_name = self.door.name
-        self._attr_name = f"{self.door.name} Door Position Sensor"
         self._attr_available = self.door.door_position_status is not None
         self._attr_is_on = self.door.door_position_status == "open"
 

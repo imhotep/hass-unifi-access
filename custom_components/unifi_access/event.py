@@ -48,13 +48,16 @@ class AccessEventEntity(EventEntity):
     """Authorized User Event Entity."""
 
     _attr_event_types = [ACCESS_ENTRY_EVENT, ACCESS_EXIT_EVENT]
+    _attr_translation_key = "access_event"
+    _attr_has_entity_name = True
+    should_poll = False
 
     def __init__(self, hass: HomeAssistant, door) -> None:
         """Initialize Unifi Access Door Lock."""
         self.hass = hass
         self.door: UnifiAccessDoor = door
         self._attr_unique_id = f"{self.door.id}_access"
-        self._attr_name = f"{self.door.name} Access"
+        self._attr_translation_placeholders = {"door_name": self.door.name}
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -88,13 +91,16 @@ class DoorbellPressedEventEntity(EventEntity):
 
     _attr_device_class = EventDeviceClass.DOORBELL
     _attr_event_types = [DOORBELL_START_EVENT, DOORBELL_STOP_EVENT]
+    _attr_translation_key = "doorbell_event"
+    _attr_has_entity_name = True
+    should_poll = False
 
     def __init__(self, hass: HomeAssistant, door) -> None:
         """Initialize Unifi Access Doorbell Event."""
         self.hass = hass
         self.door: UnifiAccessDoor = door
         self._attr_unique_id = f"{self.door.id}_doorbell_press"
-        self._attr_name = f"{self.door.name} Doorbell Press"
+        self._attr_translation_placeholders = {"door_name": self.door.name}
 
     @property
     def device_info(self) -> DeviceInfo:
