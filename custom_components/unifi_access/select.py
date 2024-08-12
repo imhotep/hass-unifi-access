@@ -24,17 +24,21 @@ async def async_setup_entry(
     coordinator: UnifiAccessCoordinator = UnifiAccessCoordinator(hass, hub)
 
     await coordinator.async_config_entry_first_refresh()
-
-    async_add_entities(
-        [
-            TemporaryLockRuleSelectEntity(coordinator, door_id)
-            for door_id in coordinator.data
-        ]
-    )
+    if hub.supports_door_lock_rules:
+        async_add_entities(
+            [
+                TemporaryLockRuleSelectEntity(coordinator, door_id)
+                for door_id in coordinator.data
+            ]
+        )
 
 
 class TemporaryLockRuleSelectEntity(CoordinatorEntity, SelectEntity):
     """Unifi Access Temporary Lock Rule Select."""
+
+    _attr_translation_key = "door_lock_rules"
+    _attr_has_entity_name = True
+    should_poll = False
 
     def __init__(
         self,
@@ -45,7 +49,6 @@ class TemporaryLockRuleSelectEntity(CoordinatorEntity, SelectEntity):
         super().__init__(coordinator, context="lock_rule")
         self.door: UnifiAccessDoor = self.coordinator.data[door_id]
         self._attr_unique_id = f"door_lock_rule_{door_id}"
-        self._attr_name = f"{self.door.name} Door Lock Rule"
         self._attr_options = [
             "",
             "keep_lock",

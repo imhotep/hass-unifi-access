@@ -27,24 +27,27 @@ async def async_setup_entry(
     coordinator: UnifiAccessCoordinator = UnifiAccessCoordinator(hass, hub)
 
     await coordinator.async_config_entry_first_refresh()
-
-    async_add_entities(
-        [
-            TemporaryLockRuleIntervalNumberEntity(door)
-            for door in coordinator.data.values()
-        ]
-    )
+    if hub.supports_door_lock_rules:
+        async_add_entities(
+            [
+                TemporaryLockRuleIntervalNumberEntity(door)
+                for door in coordinator.data.values()
+            ]
+        )
 
 
 class TemporaryLockRuleIntervalNumberEntity(RestoreNumber):
     """Unifi Access Temporary Lock Rule Interval Interval."""
+
+    _attr_translation_key = "door_lock_rule_interval"
+    _attr_has_entity_name = True
+    should_poll = False
 
     def __init__(self, door: UnifiAccessDoor) -> None:
         """Initialize Unifi Access Door Lock Rule Interval."""
         super().__init__()
         self.door: UnifiAccessDoor = door
         self._attr_unique_id = f"door_lock_rule_interval_{self.door.id}"
-        self._attr_name = f"{self.door.name} Door Lock Rule Interval (min)"
         self._attr_native_value = 10
         self._attr_native_min_value = 1
         self._attr_native_max_value = 480

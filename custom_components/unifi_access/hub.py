@@ -94,6 +94,7 @@ class UnifiAccessHub:
         self._doors: dict[str, UnifiAccessDoor] = {}
         self.evacuation = False
         self.lockdown = False
+        self.supports_door_lock_rules = True
         self.update_t = None
         self.loop = asyncio.get_event_loop()
 
@@ -110,16 +111,19 @@ class UnifiAccessHub:
 
     def update(self):
         """Get latest door data."""
-        _LOGGER.info(
-            "Getting door updates from Unifi Access %s Use Polling %s",
+        _LOGGER.debug(
+            "Getting door updates from Unifi Access %s Use Polling %s. Doors? %s",
             self.host,
             self.use_polling,
+            self.doors,
         )
         data = self._make_http_request(f"{self.host}{DOORS_URL}")
 
         for _i, door in enumerate(data):
             door_id = door["id"]
-            door_lock_rule = self.get_door_lock_rule(door_id)
+            door_lock_rule = {"type": "", "ended_time": 0}
+            if self.supports_door_lock_rules:
+                door_lock_rule = self.get_door_lock_rule(door_id)
             if door_id in self.doors:
                 existing_door = self.doors[door_id]
                 existing_door.name = door["name"]
@@ -182,14 +186,18 @@ class UnifiAccessHub:
 
         return "ok"
 
-    def get_door_lock_rule(self, door_id: str) -> DoorLockRule:
+    def get_door_lock_rule(self, door_id: str) -> DoorLockRule | None:
         """Get door lock rule."""
         _LOGGER.debug("Getting door lock rule for door_id %s", door_id)
-        data = self._make_http_request(
-            f"{self.host}{DOOR_LOCK_RULE_URL}".format(door_id=door_id)
-        )
-        _LOGGER.debug("Got door lock rule for door_id %s %s", door_id, data)
-        return cast(DoorLockRule, data)
+        try:
+            data = self._make_http_request(
+                f"{self.host}{DOOR_LOCK_RULE_URL}".format(door_id=door_id)
+            )
+            _LOGGER.debug("Got door lock rule for door_id %s %s", door_id, data)
+            return cast(DoorLockRule, data)
+        except ApiError:
+            self.supports_door_lock_rules = False
+            _LOGGER.debug("cannot get door lock rule. Likely unsupported hub")
 
     def set_door_lock_rule(self, door_id: str, door_lock_rule: DoorLockRule) -> None:
         """Set door lock rule."""
