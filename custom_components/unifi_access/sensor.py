@@ -39,10 +39,6 @@ async def async_setup_entry(
         )
 
 
-async def async_remove_entry(hass, entry) -> None:
-    """Handle removal of an entry."""
-
-
 class TemporaryLockRuleSensorEntity(SensorEntity):
     """Unifi Access Temporary Lock Rule Sensor."""
 

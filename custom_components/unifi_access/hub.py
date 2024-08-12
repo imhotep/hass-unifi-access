@@ -198,6 +198,7 @@ class UnifiAccessHub:
         except ApiError:
             self.supports_door_lock_rules = False
             _LOGGER.debug("cannot get door lock rule. Likely unsupported hub")
+            return None
 
     def set_door_lock_rule(self, door_id: str, door_lock_rule: DoorLockRule) -> None:
         """Set door lock rule."""
