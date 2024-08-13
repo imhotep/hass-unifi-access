@@ -51,7 +51,7 @@ class DoorLockRuleStatus(TypedDict):
     This class defines the active locking rule status.
     """
 
-    type: Literal["schedule", "keep_lock", "keep_unlock", "custom", "lock_early"]
+    type: Literal["schedule", "keep_lock", "keep_unlock", "custom", "lock_early", ""]
     ended_time: int
 
 
@@ -186,7 +186,7 @@ class UnifiAccessHub:
 
         return "ok"
 
-    def get_door_lock_rule(self, door_id: str) -> DoorLockRule | None:
+    def get_door_lock_rule(self, door_id: str) -> DoorLockRuleStatus:
         """Get door lock rule."""
         _LOGGER.debug("Getting door lock rule for door_id %s", door_id)
         try:
@@ -194,11 +194,11 @@ class UnifiAccessHub:
                 f"{self.host}{DOOR_LOCK_RULE_URL}".format(door_id=door_id)
             )
             _LOGGER.debug("Got door lock rule for door_id %s %s", door_id, data)
-            return cast(DoorLockRule, data)
+            return cast(DoorLockRuleStatus, data)
         except (ApiError, KeyError):
             self.supports_door_lock_rules = False
             _LOGGER.debug("cannot get door lock rule. Likely unsupported hub")
-            return None
+            return {"type": "", "ended_time": 0}
 
     def set_door_lock_rule(self, door_id: str, door_lock_rule: DoorLockRule) -> None:
         """Set door lock rule."""
