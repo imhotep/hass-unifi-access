@@ -94,7 +94,7 @@ class UnifiAccessHub:
         self._doors: dict[str, UnifiAccessDoor] = {}
         self.evacuation = False
         self.lockdown = False
-        self.supports_door_lock_rules = False
+        self.supports_door_lock_rules = True
         self.update_t = None
         self.loop = asyncio.get_event_loop()
 
