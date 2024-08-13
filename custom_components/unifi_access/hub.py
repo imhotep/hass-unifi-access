@@ -94,7 +94,7 @@ class UnifiAccessHub:
         self._doors: dict[str, UnifiAccessDoor] = {}
         self.evacuation = False
         self.lockdown = False
-        self.supports_door_lock_rules = True
+        self.supports_door_lock_rules = False
         self.update_t = None
         self.loop = asyncio.get_event_loop()
 
@@ -195,7 +195,7 @@ class UnifiAccessHub:
             )
             _LOGGER.debug("Got door lock rule for door_id %s %s", door_id, data)
             return cast(DoorLockRule, data)
-        except ApiError:
+        except (ApiError, KeyError):
             self.supports_door_lock_rules = False
             _LOGGER.debug("cannot get door lock rule. Likely unsupported hub")
             return None
