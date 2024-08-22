@@ -56,6 +56,9 @@ class UnifiAccessDoor:
     @property
     def is_locked(self):
         """Solely used for locked state when calling lock."""
+        if self.door_lock_relay_status == "" :
+            self.door_lock_relay_status = "lock"
+            _LOGGER.warning("door.py: self.door_lock_relay_status not set - assuming locked")
         return self.door_lock_relay_status == "lock"
 
     @property

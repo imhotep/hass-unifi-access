@@ -8,6 +8,7 @@
 - Unifi Access Hub (UAH) :white_check_mark:
 - Unifi Access Hub Enterprise (UAH-Ent) :x: (partial/experimental support)
 - Unifi Gate Hub (UGT) :x: (partial/experimental support)
+- Unifi Access Ultra :x: (partial/experimental support)
 
 # Getting Unifi Access API Token
 - Log in to Unifi Access and Click on Security -> Advanced -> API Token
