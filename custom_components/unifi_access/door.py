@@ -56,9 +56,9 @@ class UnifiAccessDoor:
     @property
     def is_locked(self):
         """Solely used for locked state when calling lock."""
-        if self.door_lock_relay_status == "" :
+        if self.door_lock_relay_status == "":
             self.door_lock_relay_status = "lock"
-            _LOGGER.warning("door.py: self.door_lock_relay_status not set - assuming locked")
+            _LOGGER.warning("Relay status not set - assuming locked")
         return self.door_lock_relay_status == "lock"
 
     @property
@@ -97,7 +97,7 @@ class UnifiAccessDoor:
         self._hub.get_door_lock_rule(self._id)
 
     def register_callback(self, callback: Callable[[], None]) -> None:
-        """Register callback, called when Roller changes state."""
+        """Register callback, called when door changes state."""
         self._callbacks.add(callback)
 
     def remove_callback(self, callback: Callable[[], None]) -> None:

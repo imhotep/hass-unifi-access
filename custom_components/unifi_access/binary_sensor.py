@@ -15,7 +15,6 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
-from .coordinator import UnifiAccessCoordinator
 from .hub import UnifiAccessHub
 
 _LOGGER = logging.getLogger(__name__)
@@ -29,9 +28,8 @@ async def async_setup_entry(
     """Add Binary Sensor for passed config entry."""
     hub: UnifiAccessHub = hass.data[DOMAIN][config_entry.entry_id]
 
-    coordinator = UnifiAccessCoordinator(hass, hub)
+    coordinator = hass.data[DOMAIN]["coordinator"]
 
-    await coordinator.async_config_entry_first_refresh()
     binary_sensor_entities: list[UnifiDoorStatusEntity | UnifiDoorbellStatusEntity] = []
     for key in coordinator.data:
         binary_sensor_entities.append(UnifiDoorStatusEntity(coordinator, key))

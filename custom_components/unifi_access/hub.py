@@ -4,6 +4,7 @@ This module interacts with the Unifi Access API server.
 """
 
 import asyncio
+from collections.abc import Callable
 import json
 import logging
 import ssl
@@ -96,6 +97,7 @@ class UnifiAccessHub:
         self.lockdown = False
         self.supports_door_lock_rules = True
         self.update_t = None
+        self._callbacks: set[Callable] = set()
         self.loop = asyncio.get_event_loop()
 
     @property
@@ -229,6 +231,9 @@ class UnifiAccessHub:
         self._make_http_request(
             f"{self.host}{DOORS_EMERGENCY_URL}", "PUT", emergency_data
         )
+        self.evacuation = emergency_data.get("evacuation", self.evacuation)
+        self.lockdown = emergency_data.get("lockdown", self.lockdown)
+        _LOGGER.debug("Emergency status set %s", emergency_data)
 
     def unlock_door(self, door_id: str) -> None:
         """Test if we can authenticate with the host."""
@@ -421,7 +426,6 @@ class UnifiAccessHub:
                     == "on"
                     else "lock"
                 )
-                # TODO find config keys for temporary lock rules and their ended time
                 return existing_door
 
     def _handle_config_update(self, update, device_type):
@@ -625,6 +629,15 @@ class UnifiAccessHub:
                                 update["data"]["request_id"],
                             )
                             changed_doors.append(existing_door)
+                case "access.data.setting.update":
+                    self.evacuation = update["data"]["evacuation"]
+                    self.lockdown = update["data"]["lockdown"]
+                    asyncio.run_coroutine_threadsafe(self.publish_updates(), self.loop)
+                    _LOGGER.info(
+                        "Settings updated. Evacuation %s, Lockdown %s",
+                        self.evacuation,
+                        self.lockdown,
+                    )
                 case _:
                     _LOGGER.debug("unhandled websocket message %s", update["event"])
 
@@ -687,3 +700,16 @@ class UnifiAccessHub:
         if self.verify_ssl is False:
             sslopt = {"cert_reqs": ssl.CERT_NONE}
         ws.run_forever(sslopt=sslopt, reconnect=5)
+
+    def register_callback(self, callback: Callable[[], None]) -> None:
+        """Register callback, called when settings change."""
+        self._callbacks.add(callback)
+
+    def remove_callback(self, callback: Callable[[], None]) -> None:
+        """Remove previously registered callback."""
+        self._callbacks.discard(callback)
+
+    async def publish_updates(self) -> None:
+        """Schedule call all registered callbacks."""
+        for callback in self._callbacks:
+            callback()

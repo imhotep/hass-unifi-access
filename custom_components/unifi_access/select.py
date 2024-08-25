@@ -21,9 +21,8 @@ async def async_setup_entry(
     """Add Select entity for passed config entry."""
     hub: UnifiAccessHub = hass.data[DOMAIN][config_entry.entry_id]
 
-    coordinator: UnifiAccessCoordinator = UnifiAccessCoordinator(hass, hub)
+    coordinator = hass.data[DOMAIN]["coordinator"]
 
-    await coordinator.async_config_entry_first_refresh()
     if hub.supports_door_lock_rules:
         async_add_entities(
             [
