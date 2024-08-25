@@ -13,9 +13,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
-from .coordinator import UnifiAccessCoordinator
 from .door import UnifiAccessDoor
-from .hub import UnifiAccessHub
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,11 +24,8 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Add Binary Sensor for passed config entry."""
-    hub: UnifiAccessHub = hass.data[DOMAIN][config_entry.entry_id]
 
-    coordinator = UnifiAccessCoordinator(hass, hub)
-
-    await coordinator.async_config_entry_first_refresh()
+    coordinator = hass.data[DOMAIN]["coordinator"]
 
     async_add_entities(
         UnifiDoorLockEntity(coordinator, key) for key in coordinator.data
@@ -44,12 +39,15 @@ class UnifiDoorLockEntity(CoordinatorEntity, LockEntity):
 
     supported_features = LockEntityFeature.OPEN
 
+    _attr_translation_key = "access_door"
+    _attr_has_entity_name = True
+
     def __init__(self, coordinator, door_id) -> None:
         """Initialize Unifi Access Door Lock."""
         super().__init__(coordinator, context=id)
         self.door: UnifiAccessDoor = self.coordinator.data[door_id]
         self._attr_unique_id = self.door.id
-        self._attr_name = self.door.name
+        self._attr_translation_placeholders = {"door_name": self.door.name}
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -57,7 +55,7 @@ class UnifiDoorLockEntity(CoordinatorEntity, LockEntity):
         return DeviceInfo(
             identifiers={(DOMAIN, self.door.id)},
             name=self.door.name,
-            model="UAH",
+            model=self.door.hub_type,
             manufacturer="Unifi",
         )
 

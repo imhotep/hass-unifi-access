@@ -15,7 +15,6 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
-from .coordinator import UnifiAccessCoordinator
 from .hub import UnifiAccessHub
 
 _LOGGER = logging.getLogger(__name__)
@@ -29,9 +28,8 @@ async def async_setup_entry(
     """Add Binary Sensor for passed config entry."""
     hub: UnifiAccessHub = hass.data[DOMAIN][config_entry.entry_id]
 
-    coordinator = UnifiAccessCoordinator(hass, hub)
+    coordinator = hass.data[DOMAIN]["coordinator"]
 
-    await coordinator.async_config_entry_first_refresh()
     binary_sensor_entities: list[UnifiDoorStatusEntity | UnifiDoorbellStatusEntity] = []
     for key in coordinator.data:
         binary_sensor_entities.append(UnifiDoorStatusEntity(coordinator, key))
@@ -44,16 +42,16 @@ class UnifiDoorStatusEntity(CoordinatorEntity, BinarySensorEntity):
     """Unifi Access DPS Entity."""
 
     should_poll = False
+    _attr_translation_key = "access_door_dps"
+    _attr_has_entity_name = True
 
     def __init__(self, coordinator, door_id) -> None:
         """Initialize DPS Entity."""
         super().__init__(coordinator, context=door_id)
         self._attr_device_class = BinarySensorDeviceClass.DOOR
-        self.id = door_id
         self.door = self.coordinator.data[door_id]
         self._attr_unique_id = self.door.id
         self.device_name = self.door.name
-        self._attr_name = f"{self.door.name} Door Position Sensor"
         self._attr_available = self.door.door_position_status is not None
         self._attr_is_on = self.door.door_position_status == "open"
 
@@ -63,7 +61,7 @@ class UnifiDoorStatusEntity(CoordinatorEntity, BinarySensorEntity):
         return DeviceInfo(
             identifiers={(DOMAIN, self.door.id)},
             name=self.door.name,
-            model="UAH",
+            model=self.door.hub_type,
             manufacturer="Unifi",
         )
 
@@ -97,7 +95,6 @@ class UnifiDoorbellStatusEntity(CoordinatorEntity, BinarySensorEntity):
         """Initialize Doorbell Entity."""
         super().__init__(coordinator, context=door_id)
         self._attr_device_class = BinarySensorDeviceClass.OCCUPANCY
-        self.id = door_id
         self.door = self.coordinator.data[door_id]
         self._attr_unique_id = f"doorbell_{self.door.id}"
         self.device_name = self.door.name

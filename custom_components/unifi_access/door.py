@@ -15,6 +15,8 @@ class UnifiAccessDoor:
         name: str,
         door_position_status: str,
         door_lock_relay_status: str,
+        door_lock_rule: str,
+        door_lock_rule_ended_time: int,
         hub,
     ) -> None:
         """Initialize door."""
@@ -26,11 +28,15 @@ class UnifiAccessDoor:
         self._is_locking = False
         self._is_unlocking = False
         self._hub = hub
+        self.hub_type = "UAH"
         self._id = door_id
         self.name = name
         self.door_position_status = door_position_status
         self.door_lock_relay_status = door_lock_relay_status
         self.doorbell_request_id = None
+        self.lock_rule = door_lock_rule
+        self.lock_rule_interval = 10
+        self.lock_rule_ended_time = door_lock_rule_ended_time
 
     @property
     def doorbell_pressed(self) -> bool:
@@ -50,6 +56,9 @@ class UnifiAccessDoor:
     @property
     def is_locked(self):
         """Solely used for locked state when calling lock."""
+        if self.door_lock_relay_status == "":
+            self.door_lock_relay_status = "lock"
+            _LOGGER.warning("Relay status not set - assuming locked")
         return self.door_lock_relay_status == "lock"
 
     @property
@@ -76,8 +85,19 @@ class UnifiAccessDoor:
         else:
             _LOGGER.error("Door with door ID %s is already unlocked", self.id)
 
+    def set_lock_rule(self, lock_rule_type) -> None:
+        """Set lock rule."""
+        new_door_lock_rule = {"type": lock_rule_type}
+        if lock_rule_type == "custom":
+            new_door_lock_rule["interval"] = self.lock_rule_interval
+        self._hub.set_door_lock_rule(self._id, new_door_lock_rule)
+
+    def get_lock_rule(self) -> None:
+        """Get lock rule."""
+        self._hub.get_door_lock_rule(self._id)
+
     def register_callback(self, callback: Callable[[], None]) -> None:
-        """Register callback, called when Roller changes state."""
+        """Register callback, called when door changes state."""
         self._callbacks.add(callback)
 
     def remove_callback(self, callback: Callable[[], None]) -> None:

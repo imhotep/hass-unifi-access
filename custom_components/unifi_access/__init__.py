@@ -1,4 +1,5 @@
 """The Unifi Access integration."""
+
 from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry
@@ -6,9 +7,18 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
+from .coordinator import UnifiAccessCoordinator
 from .hub import UnifiAccessHub
 
-PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.LOCK, Platform.EVENT]
+PLATFORMS: list[Platform] = [
+    Platform.BINARY_SENSOR,
+    Platform.EVENT,
+    Platform.LOCK,
+    Platform.NUMBER,
+    Platform.SELECT,
+    Platform.SENSOR,
+    Platform.SWITCH,
+]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -18,6 +28,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     hub.set_api_token(entry.data["api_token"])
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = hub
+
+    coordinator: UnifiAccessCoordinator = UnifiAccessCoordinator(hass, hub)
+
+    await coordinator.async_config_entry_first_refresh()
+
+    hass.data[DOMAIN]["coordinator"] = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 

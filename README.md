@@ -1,10 +1,18 @@
 # Unifi Access Custom Integration for Home Assistant
 
-This is a basic integration of [Unifi Access](https://ui.com/door-access) in [Home Assistant](https://homeassistant.io). If you have Unifi Access set up with UID this will *NOT* work. _Camera Feeds are currently not offered by the API and therefore **NOT** supported_.
+- This is a basic integration of [Unifi Access](https://ui.com/door-access) in [Home Assistant](https://homeassistant.io). 
+- If you have Unifi Access set up with UID this will likely *NOT* work although some people have reported success using the free version of UID. 
+- _Camera Feeds are currently not offered by the API and therefore **NOT** supported_.
+
+# Supported hardware
+- Unifi Access Hub (UAH) :white_check_mark:
+- Unifi Access Hub Enterprise (UAH-Ent) :x: (partial/experimental support)
+- Unifi Gate Hub (UGT) :x: (partial/experimental support)
+- Unifi Access Ultra :x: (partial/experimental support)
 
 # Getting Unifi Access API Token
 - Log in to Unifi Access and Click on Security -> Advanced -> API Token
-- Create a new token and pick all permissions (this is *IMPORTANT*)
+- Create a new token and pick all permissions (this is *IMPORTANT*). At the very least pick: Space, Device and System Log.
 
 # Installation (HACS)
 - Add this repository as a custom repository in HACS and install the integration.
@@ -55,6 +63,18 @@ An entity will get created for each door. Every time a door is accessed (entry, 
 - door_id
 - actor # this is the name of the user that accessed the door. If set to N/A that means UNAUTHORIZED ACCESS!
 - type # `unifi_access_entry` or `unifi_access_exit`
+
+### Evacuation/Lockdown
+The evacuation (unlock all doors) and lockdown (lock all doors) switches apply to all doors and gates and **will sound the alarm** no matter which configuration you currently have in your terminal settings. The status will not update currently (known issue).
+
+### Door lock rules (only applies to UAH)
+The following entities will be created: `input_select`, `input_number` and 2 `sensor` entities (end time and current rule).
+You are able to select one of the following rules via the `input_select`:
+- **keep_lock**: door is locked indefinitely
+- **keep_unlock**: door is unlocked indefinitely
+- **custom**: door is unlocked for a given interval (use the input_number to define how long. Default is 10 minutes).
+- **reset**: clear all lock rules
+- **lock_early**: locks the door if it's currently on an unlock schedule.
 
 # Example automation
 
