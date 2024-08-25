@@ -1,12 +1,16 @@
 {
-  "domain": "unifi_access",
-  "name": "Unifi Access",
-  "codeowners": ["@imhotep"],
+  "codeowners": [
+    "@imhotep"
+  ],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://www.home-assistant.io/integrations/unifi_access",
-  "issue_tracker": "https://github.com/imhotep/hass-unifi-access/issues",
+  "domain": "unifi_access",
   "iot_class": "local_push",
-  "version": "1.2.0",
-  "requirements": ["websocket-client==1.8.0"]
+  "issue_tracker": "https://github.com/imhotep/hass-unifi-access/issues",
+  "name": "Unifi Access",
+  "requirements": [
+    "websocket-client==1.8.0"
+  ],
+  "version": "1.2.0"
 }
