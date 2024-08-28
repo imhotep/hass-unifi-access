@@ -1,0 +1,81 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Toestel is reeds geconfigureerd"
+        },
+        "error": {
+            "cannot_connect": "Verbinding lukt niet",
+            "invalid_api_key": "Verkeerde API sleutel",
+            "ssl_error": "Fout bij valideren van SSL certificaat",
+            "unknown": "Onbekende fout"
+        },
+        "step": {
+            "user": {
+                "data": {
+                    "api_token": "API token",
+                    "host": "Gast",
+                    "use_polling": "Gebruik polling",
+                    "verify_ssl": "Controleer SSL certificaat"
+                }
+            }
+        }
+    },
+    "entity": {
+        "binary_sensor": {
+            "access_door_dps": {
+                "name": "Deur Positie Sensor"
+            }
+        },
+        "event": {
+            "access_event": {
+                "name": "Toegang"
+            },
+            "doorbell_event": {
+                "name": "Deurbel Drukken"
+            }
+        },
+        "lock": {
+            "access_door": {
+                "name": "{deur_naam}"
+            }
+        },
+        "number": {
+            "door_lock_rule_interval": {
+                "name": "Regel Interval (min)"
+            }
+        },
+        "select": {
+            "door_lock_rules": {
+                "name": "Deur Sluiting Regel",
+                "state": {
+                    "custom": "Aangepaste (interval instellen)",
+                    "keep_lock": "Hou het gesloten",
+                    "keep_unlock": "Hou het open",
+                    "lock_early": "Sluit vroeg",
+                    "reset": "Regel opnieuw instellen"
+                }
+            }
+        },
+        "sensor": {
+            "door_lock_rule": {
+                "name": "Deur sluiting regel",
+                "state": {
+                    "custom": "Aangepast",
+                    "keep_lock": "Gesloten",
+                    "keep_unlock": "Open"
+                }
+            },
+            "door_lock_rule_ended_time": {
+                "name": "Regel Eind Tijd"
+            }
+        },
+        "switch": {
+            "evacuation": {
+                "name": "Evacuatie"
+            },
+            "lockdown": {
+                "name": "Vergendeling"
+            }
+        }
+    }
+}
