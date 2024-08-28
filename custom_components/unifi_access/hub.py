@@ -327,12 +327,13 @@ class UnifiAccessHub:
                 ),
                 0,
             )
-            return existing_door
+            return (existing_door)
 
     def _handle_UAH_Ent_config_update(self, update, device_type):
         """Process UAH-Ent config update."""
         # UAH-Ent has 8 ports
         # Port X dps = data.config[input_dX_dps], relay = data.config[output_dX_lock_relay]
+        changed_doors = []
         for ext in update["data"]["extensions"]:
             door_id = ext["target_value"]
             # dev_id = ext["device_id"]
@@ -372,14 +373,16 @@ class UnifiAccessHub:
                 == "on"
                 else "lock"
             )
-            return existing_door
+            changed_doors.append(existing_door)
             # TODO find config keys for temporary lock rules and their ended time # pylint: disable=fixme
+        return changed_doors
 
     def _handle_UGT_config_update(self, update, device_type):
         """Process UGT config update."""
         # UGT has 2 ports
         # Port 1 = vehicle gate, dps = data.config[input_gate_dps], relay = data.config[output_oper1_relay || output_oper2_relay]
         # Port 2 = pedestrian gate, dps = data.config[input_door_dps], relay = data.config[output_door_lock_relay]
+        changed_doors = []
         for ext in update["data"]["extensions"]:
             door_id = ext["target_value"]
             existing_door = self.doors[door_id]
@@ -426,7 +429,8 @@ class UnifiAccessHub:
                     == "on"
                     else "lock"
                 )
-                return existing_door
+            changed_doors.append(existing_door)
+        return changed_doors
 
     def _handle_config_update(self, update, device_type):
         """Process config update."""
@@ -481,19 +485,20 @@ class UnifiAccessHub:
                         changed_doors.append(existing_door)
                 case "access.data.device.update":
                     device_type = update["data"]["device_type"]
-                    existing_door = self._handle_config_update(update, device_type)
-                    if existing_door:
-                        changed_doors.append(existing_door)
-                        _LOGGER.info(
-                            "Device update on %s door name %s with id %s config updated. locked: %s dps: %s, lock rule: %s, lock rule ended time %s",
-                            device_type,
-                            existing_door.name,
-                            existing_door.id,
-                            existing_door.door_lock_relay_status,
-                            existing_door.door_position_status,
-                            existing_door.lock_rule,
-                            existing_door.lock_rule_ended_time,
-                        )
+                    door_updates = self._handle_config_update(update, device_type)
+                    if door_updates:
+                        changed_doors.extend(door_updates)
+                        for door in door_updates:
+                            _LOGGER.info(
+                                "Device update on %s door name %s with id %s config updated. locked: %s dps: %s, lock rule: %s, lock rule ended time %s",
+                                device_type,
+                                door.name,
+                                door.id,
+                                door.door_lock_relay_status,
+                                door.door_position_status,
+                                door.lock_rule,
+                                door.lock_rule_ended_time,
+                            )
 
                 case "access.remote_view":
                     door_name = update["data"]["door_name"]
