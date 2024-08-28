@@ -19,5 +19,63 @@
                 }
             }
         }
+    },
+    "entity": {
+        "binary_sensor": {
+            "access_door_dps": {
+                "name": "Door Position Sensor"
+            }
+        },
+        "event": {
+            "access_event": {
+                "name": "Access"
+            },
+            "doorbell_event": {
+                "name": "Doorbell Press"
+            }
+        },
+        "lock": {
+            "access_door": {
+                "name": "{door_name}"
+            }
+        },
+        "number": {
+            "door_lock_rule_interval": {
+                "name": "Rule Interval (min)"
+            }
+        },
+        "select": {
+            "door_lock_rules": {
+                "name": "Door Lock Rule",
+                "state": {
+                    "custom": "Custom (set interval)",
+                    "keep_lock": "Keep it locked",
+                    "keep_unlock": "Keep it unlocked",
+                    "lock_early": "Lock early",
+                    "reset": "Reset rule"
+                }
+            }
+        },
+        "sensor": {
+            "door_lock_rule": {
+                "name": "Door Lock Rule",
+                "state": {
+                    "custom": "Custom",
+                    "keep_lock": "Locked",
+                    "keep_unlock": "Unlocked"
+                }
+            },
+            "door_lock_rule_ended_time": {
+                "name": "Rule End Time"
+            }
+        },
+        "switch": {
+            "evacuation": {
+                "name": "Evacuation"
+            },
+            "lockdown": {
+                "name": "Lockdown"
+            }
+        }
     }
 }
