@@ -19,5 +19,63 @@
     "abort": {
       "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
     }
+  },
+  "entity": {
+    "event": {
+      "access_event": {
+        "name": "Access"
+      },
+      "doorbell_event": {
+        "name": "Doorbell Press"
+      }
+    },
+    "sensor": {
+      "door_lock_rule": {
+        "name": "Door Lock Rule",
+        "state": {
+          "keep_lock": "Locked",
+          "keep_unlock": "Unlocked",
+          "custom": "Custom"
+        }
+      },
+      "door_lock_rule_ended_time": {
+        "name": "Rule End Time"
+      }
+    },
+    "number": {
+      "door_lock_rule_interval": {
+        "name": "Rule Interval (min)"
+      }
+    },
+    "lock": {
+      "access_door": {
+        "name": "{door_name}"
+      }
+    },
+    "binary_sensor": {
+      "access_door_dps": {
+        "name": "Door Position Sensor"
+      }
+    },
+    "switch": {
+      "evacuation": {
+        "name": "Evacuation"
+      },
+      "lockdown": {
+        "name": "Lockdown"
+      }
+    },
+    "select": {
+      "door_lock_rules": {
+        "name": "Door Lock Rule",
+        "state": {
+          "keep_lock": "Keep it locked",
+          "keep_unlock": "Keep it unlocked",
+          "custom": "Custom (set interval)",
+          "reset": "Reset rule",
+          "lock_early": "Lock early"
+        }
+      }
+    }
   }
 }
