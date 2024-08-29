@@ -1,0 +1,81 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Il dispositivo è già configurato"
+        },
+        "error": {
+            "cannot_connect": "Connessione fallita",
+            "invalid_api_key": "Chiave API non valida",
+            "ssl_error": "Errore nella convalida del certificato SSL",
+            "unknown": "Errore imprevisto"
+        },
+        "step": {
+            "user": {
+                "data": {
+                    "api_token": "Token API",
+                    "host": "Host",
+                    "use_polling": "Interrogazione basata sul tempo (polling)",
+                    "verify_ssl": "Verifica del certificato SSL"
+                }
+            }
+        }
+    },
+    "entity": {
+        "binary_sensor": {
+            "access_door_dps": {
+                "name": "Sensore di posizione della porta"
+            }
+        },
+        "event": {
+            "access_event": {
+                "name": "Accesso"
+            },
+            "doorbell_event": {
+                "name": "Campanello premuto"
+            }
+        },
+        "lock": {
+            "access_door": {
+                "name": "{door_name}"
+            }
+        },
+        "number": {
+            "door_lock_rule_interval": {
+                "name": "Intervallo della regola (min)"
+            }
+        },
+        "select": {
+            "door_lock_rules": {
+                "name": "Regola serratura porta",
+                "state": {
+                    "custom": "Personalizzato (intervallo impostato)",
+                    "keep_lock": "Tenerlo chiuso",
+                    "keep_unlock": "Tenerlo aperto",
+                    "lock_early": "Blocco anticipato",
+                    "reset": "Azzeramento della regola"
+                }
+            }
+        },
+        "sensor": {
+            "door_lock_rule": {
+                "name": "Regola serratura porta",
+                "state": {
+                    "custom": "Personalizzato",
+                    "keep_lock": "Bloccato",
+                    "keep_unlock": "Sbloccato"
+                }
+            },
+            "door_lock_rule_ended_time": {
+                "name": "Fine della regola"
+            }
+        },
+        "switch": {
+            "evacuation": {
+                "name": "Evacuazione"
+            },
+            "lockdown": {
+                "name": "Blocco"
+            }
+        }
+    }
+}
