@@ -327,7 +327,7 @@ class UnifiAccessHub:
                 ),
                 0,
             )
-            return (existing_door)
+            return [existing_door]
 
     def _handle_UAH_Ent_config_update(self, update, device_type):
         """Process UAH-Ent config update."""
