@@ -444,7 +444,7 @@ class UnifiAccessHub:
             case "UGT":
                 return self._handle_UGT_config_update(update, device_type)
 
-    def on_message(self, ws: websocket.WebSocketApp, message):
+    def on_message(self, ws: websocket.WebSocketApp, message):  # noqa: C901
         """Handle messages received on the websocket client.
 
         Doorbell presses are relying on door names so if those are not unique, it may cause some issues
@@ -510,7 +510,7 @@ class UnifiAccessHub:
                             if door.name == door_name
                         ),
                         None,
-                    )  # FIXME this is likely unreliable. API does not seem to provide door id forthis access.remote_view
+                    )  # FIXME this is likely unreliable. API does not seem to provide door id forthis access.remote_view  # pylint: disable=fixme
                     if existing_door is not None:
                         existing_door.doorbell_request_id = update["data"]["request_id"]
                         event = "doorbell_press"
