@@ -432,6 +432,11 @@ class UnifiAccessHub:
             changed_doors.append(existing_door)
         return changed_doors
 
+    def _handle_UNKNOWN_config_update(self, update, device_type):
+        """Default handler for unknown hub types"""
+        _LOGGER.critical("UniFi Access Hub type %s unknown", device_type)
+        _LOGGER.critical("%s", update)
+
     def _handle_config_update(self, update, device_type):
         """Process config update."""
         match device_type:
@@ -443,6 +448,8 @@ class UnifiAccessHub:
                 return self._handle_UAH_Ent_config_update(update, device_type)
             case "UGT":
                 return self._handle_UGT_config_update(update, device_type)
+            case _:
+                return self._handle_UNKNOWN_config_update(update, device_type)
 
     def on_message(self, ws: websocket.WebSocketApp, message):  # noqa: C901
         """Handle messages received on the websocket client.
