@@ -21,6 +21,7 @@ If applicable, add screenshots to help explain your problem.
 
 **Versions:**
  - Home Assistant version
+ - Unifi Access version (Go to settings in your Unifi Access web interface)
  - Unifi Access Integration version
 
 **Home Assistant DEBUG logs (MANDATORY)**
