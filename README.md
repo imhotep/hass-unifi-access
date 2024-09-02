@@ -7,6 +7,7 @@
 # Supported hardware
 - Unifi Access Hub (UAH) :white_check_mark:
 - Unifi Access Hub (UAH-DOOR) :white_check_mark:
+- Unifi Access Intercom (UA-Intercom) :x: (partial/experimental support)
 - Unifi Access Hub Enterprise (UAH-Ent) :x: (partial/experimental support)
 - Unifi Gate Hub (UGT) :x: (partial/experimental support)
 - Unifi Access Ultra :x: (partial/experimental support)

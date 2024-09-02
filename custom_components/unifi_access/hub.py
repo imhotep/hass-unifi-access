@@ -444,6 +444,8 @@ class UnifiAccessHub:
                 return self._handle_UAH_config_update(update, device_type)
             case "UAH-DOOR":
                 return self._handle_UAH_config_update(update, device_type)
+            case "UA-Intercom":
+                return self._handle_UAH_config_update(update, device_type)
             case "UAH-Ent":
                 return self._handle_UAH_Ent_config_update(update, device_type)
             case "UA-ULTRA":
