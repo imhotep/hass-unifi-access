@@ -433,7 +433,7 @@ class UnifiAccessHub:
         return changed_doors
 
     def _handle_UNKNOWN_config_update(self, update, device_type):
-        """Default handler for unknown hub types"""
+        """Handle unknown hub types."""
         _LOGGER.critical("UniFi Access Hub type %s unknown", device_type)
         _LOGGER.critical("%s", update)
 
