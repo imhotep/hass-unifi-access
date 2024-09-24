@@ -600,7 +600,7 @@ class UnifiAccessHub:
                                     "type": ACCESS_EVENT.format(type=access_type),
                                 }
                                 _LOGGER.info(
-                                    "Door name %s with id %s accessed by %s. access type: %s",
+                                    "Door name %s with id %s accessed by %s. authentication %s, access type: %s",
                                     existing_door.name,
                                     door_id,
                                     actor,
