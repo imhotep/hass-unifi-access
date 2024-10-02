@@ -579,6 +579,8 @@ class UnifiAccessHub:
                         if door_id in self.doors:
                             existing_door = self.doors[door_id]
                             actor = update["data"]["_source"]["actor"]["display_name"]
+                            #"REMOTE_THROUGH_UAH" , "NFC" , "MOBILE_TAP" , "PIN_CODE"
+                            authentication = update["data"]["_source"]["authentication"]["credential_provider"]
                             device_config = next(
                                 (
                                     target
@@ -594,13 +596,15 @@ class UnifiAccessHub:
                                     "door_name": existing_door.name,
                                     "door_id": door_id,
                                     "actor": actor,
+                                    "authentication": authentication,
                                     "type": ACCESS_EVENT.format(type=access_type),
                                 }
                                 _LOGGER.info(
-                                    "Door name %s with id %s accessed by %s. access type: %s",
+                                    "Door name %s with id %s accessed by %s. authentication %s, access type: %s",
                                     existing_door.name,
                                     door_id,
                                     actor,
+                                    authentication,
                                     access_type,
                                 )
                             changed_doors.append(existing_door)
