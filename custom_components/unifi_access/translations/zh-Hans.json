@@ -1,0 +1,81 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "设备已配置"
+        },
+        "error": {
+            "cannot_connect": "连接失败",
+            "invalid_api_key": "无效的 API 密钥",
+            "ssl_error": "验证 SSL 证书时出错",
+            "unknown": "意外错误"
+        },
+        "step": {
+            "user": {
+                "data": {
+                    "api_token": "API 令牌",
+                    "host": "主机",
+                    "use_polling": "使用轮询",
+                    "verify_ssl": "验证 SSL 证书"
+                }
+            }
+        }
+    },
+    "entity": {
+        "binary_sensor": {
+            "access_door_dps": {
+                "name": "门位置传感器"
+            }
+        },
+        "event": {
+            "access_event": {
+                "name": "访问"
+            },
+            "doorbell_event": {
+                "name": "门铃按下"
+            }
+        },
+        "lock": {
+            "access_door": {
+                "name": "{door_name}"
+            }
+        },
+        "number": {
+            "door_lock_rule_interval": {
+                "name": "规则间隔（分钟）"
+            }
+        },
+        "select": {
+            "door_lock_rules": {
+                "name": "门锁规则",
+                "state": {
+                    "custom": "自定义（设置间隔）",
+                    "keep_lock": "保持锁定",
+                    "keep_unlock": "保持解锁",
+                    "lock_early": "提前锁定",
+                    "reset": "重置规则"
+                }
+            }
+        },
+        "sensor": {
+            "door_lock_rule": {
+                "name": "门锁规则",
+                "state": {
+                    "custom": "自定义",
+                    "keep_lock": "已锁定",
+                    "keep_unlock": "已解锁"
+                }
+            },
+            "door_lock_rule_ended_time": {
+                "name": "规则结束时间"
+            }
+        },
+        "switch": {
+            "evacuation": {
+                "name": "疏散"
+            },
+            "lockdown": {
+                "name": "封锁"
+            }
+        }
+    }
+}
