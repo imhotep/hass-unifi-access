@@ -292,7 +292,7 @@ class UnifiAccessHub:
                         for config in update["data"]["configs"]
                         if config["key"] == "input_state_dps"
                     ),
-                    "off",
+                    "on",
                 )
                 == "on"
                 else "open"
