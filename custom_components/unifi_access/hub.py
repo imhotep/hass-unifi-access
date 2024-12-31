@@ -432,6 +432,11 @@ class UnifiAccessHub:
             changed_doors.append(existing_door)
         return changed_doors
 
+    def _handle_IGNORED_config_update(self, update, device_type):
+        """Handle unknown hub types."""
+        _LOGGER.debug("UniFi Access Hub type %s ignored", device_type)
+        _LOGGER.debug("%s", update)
+
     def _handle_UNKNOWN_config_update(self, update, device_type):
         """Handle unknown hub types."""
         _LOGGER.critical("UniFi Access Hub type %s unknown", device_type)
@@ -444,14 +449,18 @@ class UnifiAccessHub:
                 return self._handle_UAH_config_update(update, device_type)
             case "UAH-DOOR":
                 return self._handle_UAH_config_update(update, device_type)
-            case "UA-Intercom":
-                return self._handle_UAH_config_update(update, device_type)
             case "UAH-Ent":
                 return self._handle_UAH_Ent_config_update(update, device_type)
             case "UA-ULTRA":
                 return self._handle_UAH_Ent_config_update(update, device_type)
             case "UGT":
                 return self._handle_UGT_config_update(update, device_type)
+            case "UA-G2":
+                return self._handle_IGNORED_config_update(update, device_type)
+            case "UA-G2-PRO":
+                return self._handle_IGNORED_config_update(update, device_type)
+            case "UA-Intercom":
+                return self._handle_IGNORED_config_update(update, device_type)
             case _:
                 return self._handle_UNKNOWN_config_update(update, device_type)
 
@@ -579,8 +588,6 @@ class UnifiAccessHub:
                         if door_id in self.doors:
                             existing_door = self.doors[door_id]
                             actor = update["data"]["_source"]["actor"]["display_name"]
-                            #"REMOTE_THROUGH_UAH" , "NFC" , "MOBILE_TAP" , "PIN_CODE"
-                            authentication = update["data"]["_source"]["authentication"]["credential_provider"]
                             device_config = next(
                                 (
                                     target
@@ -596,15 +603,13 @@ class UnifiAccessHub:
                                     "door_name": existing_door.name,
                                     "door_id": door_id,
                                     "actor": actor,
-                                    "authentication": authentication,
                                     "type": ACCESS_EVENT.format(type=access_type),
                                 }
                                 _LOGGER.info(
-                                    "Door name %s with id %s accessed by %s. authentication %s, access type: %s",
+                                    "Door name %s with id %s accessed by %s. access type: %s",
                                     existing_door.name,
                                     door_id,
                                     actor,
-                                    authentication,
                                     access_type,
                                 )
                             changed_doors.append(existing_door)
