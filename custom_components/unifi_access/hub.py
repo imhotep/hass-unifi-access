@@ -459,6 +459,8 @@ class UnifiAccessHub:
                 return self._handle_IGNORED_config_update(update, device_type)
             case "UA-G2-PRO":
                 return self._handle_IGNORED_config_update(update, device_type)
+            case "UA-G3":
+                return self._handle_IGNORED_config_update(update, device_type)
             case "UA-Intercom":
                 return self._handle_IGNORED_config_update(update, device_type)
             case _:

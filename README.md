@@ -10,7 +10,8 @@
 - Unifi Access Intercom (UA-Intercom) :x: (partial/experimental support)
 - Unifi Access Hub Enterprise (UAH-Ent) :x: (partial/experimental support)
 - Unifi Gate Hub (UGT) :x: (partial/experimental support)
-- Unifi Access Ultra :x: (partial/experimental support)
+- Unifi Access Ultra (UA-Ultra) :x: (partial/experimental support)
+- Unifi Access Door Mini (UA-Hub-Door-Mini) :x: (unsupported - use polling)
 
 # Getting Unifi Access API Token
 - Log in to Unifi Access and Click on Security -> Advanced -> API Token
