@@ -13,6 +13,7 @@ from .hub import UnifiAccessHub
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
     Platform.EVENT,
+    Platform.IMAGE,
     Platform.LOCK,
     Platform.NUMBER,
     Platform.SELECT,

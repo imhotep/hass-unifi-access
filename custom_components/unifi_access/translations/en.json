@@ -34,6 +34,11 @@
                 "name": "Doorbell Press"
             }
         },
+        "image": {
+            "door_thumbnail": {
+                "name": "Thumbnail"
+            }
+        },
         "lock": {
             "access_door": {
                 "name": "{door_name}"

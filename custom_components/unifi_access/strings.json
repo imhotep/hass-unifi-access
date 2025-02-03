@@ -52,6 +52,11 @@
         "name": "{door_name}"
       }
     },
+    "image": {
+      "door_thumbnail": {
+        "name": "Thumbnail"
+      }
+    },
     "binary_sensor": {
       "access_door_dps": {
         "name": "Door Position Sensor"

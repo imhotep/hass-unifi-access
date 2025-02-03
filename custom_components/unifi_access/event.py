@@ -27,7 +27,7 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Add Binary Sensor for passed config entry."""
+    """Add event entity for passed config entry."""
 
     coordinator = hass.data[DOMAIN]["coordinator"]
 
