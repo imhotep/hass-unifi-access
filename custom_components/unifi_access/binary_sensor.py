@@ -25,7 +25,7 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Add Binary Sensor for passed config entry."""
+    """Add binary_sensor entity for passed config entry."""
     hub: UnifiAccessHub = hass.data[DOMAIN][config_entry.entry_id]
 
     coordinator = hass.data[DOMAIN]["coordinator"]
