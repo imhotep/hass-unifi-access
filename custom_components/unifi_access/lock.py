@@ -23,7 +23,7 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Add Binary Sensor for passed config entry."""
+    """Add lock entity for passed config entry."""
 
     coordinator = hass.data[DOMAIN]["coordinator"]
 
@@ -41,6 +41,7 @@ class UnifiDoorLockEntity(CoordinatorEntity, LockEntity):
 
     _attr_translation_key = "access_door"
     _attr_has_entity_name = True
+    _attr_name = None
 
     def __init__(self, coordinator, door_id) -> None:
         """Initialize Unifi Access Door Lock."""

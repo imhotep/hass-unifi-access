@@ -7,11 +7,11 @@
 # Supported hardware
 - Unifi Access Hub (UAH) :white_check_mark:
 - Unifi Access Hub (UAH-DOOR) :white_check_mark:
-- Unifi Access Intercom (UA-Intercom) :x: (partial/experimental support)
-- Unifi Access Hub Enterprise (UAH-Ent) :x: (partial/experimental support)
-- Unifi Gate Hub (UGT) :x: (partial/experimental support)
-- Unifi Access Ultra (UA-Ultra) :x: (partial/experimental support)
-- Unifi Access Door Mini (UA-Hub-Door-Mini) :x: (unsupported - use polling)
+- Unifi Access Intercom (UA-Intercom) :white_check_mark:
+- Unifi Access Hub Enterprise (UAH-Ent) :white_check_mark:
+- Unifi Gate Hub (UGT) :white_check_mark:
+- Unifi Access Ultra (UA-Ultra) :white_check_mark:
+- Unifi Access Door Mini (UA-Hub-Door-Mini) :white_check_mark:
 
 # Getting Unifi Access API Token
 - Log in to Unifi Access and Click on Security -> Advanced -> API Token
@@ -70,6 +70,9 @@ An entity will get created for each door. Every time a door is accessed (entry, 
 
 ### Evacuation/Lockdown
 The evacuation (unlock all doors) and lockdown (lock all doors) switches apply to all doors and gates and **will sound the alarm** no matter which configuration you currently have in your terminal settings. The status will not update currently (known issue).
+
+### Thumbnail 
+A thumbnail of when the door is last accessed/locked/unlocked.
 
 ### Door lock rules (only applies to UAH)
 The following entities will be created: `input_select`, `input_number` and 2 `sensor` entities (end time and current rule).

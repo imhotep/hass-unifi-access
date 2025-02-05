@@ -18,7 +18,7 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Add Select entity for passed config entry."""
+    """Add sensor entity for passed config entry."""
     hub: UnifiAccessHub = hass.data[DOMAIN][config_entry.entry_id]
 
     coordinator = hass.data[DOMAIN]["coordinator"]
@@ -107,7 +107,7 @@ class TemporaryLockRuleEndTimeSensorEntity(SensorEntity):
             utc_timestamp = int(self.door.lock_rule_ended_time)
             utc_datetime = datetime.fromtimestamp(utc_timestamp, tz=UTC)
             local_datetime = utc_datetime.astimezone()
-            return f" {local_datetime.strftime("%Y-%m-%d %H:%M:%S %Z")}"
+            return f" {local_datetime.strftime('%Y-%m-%d %H:%M:%S %Z')}"
         return ""
 
     @property

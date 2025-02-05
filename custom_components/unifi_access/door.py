@@ -37,6 +37,16 @@ class UnifiAccessDoor:
         self.lock_rule = door_lock_rule
         self.lock_rule_interval = 10
         self.lock_rule_ended_time = door_lock_rule_ended_time
+        self.thumbnail = (
+            b"\x89PNG\r\n\x1a\n"
+            b"\x00\x00\x00\rIHDR\x00\x00\x00\x01"
+            b"\x00\x00\x00\x01\x08\x06\x00\x00\x00"
+            b"\x1f\x15\xc4\x89"
+            b"\x00\x00\x00\nIDATx\xdac\xf8\x0f\x00\x01\x05\x01\x02"
+            b"\x0a\x15\xbd"
+            b"\x00\x00\x00\x00IEND\xaeB`\x82"
+        )
+        self.thumbnail_last_updated = None
 
     @property
     def doorbell_pressed(self) -> bool:
