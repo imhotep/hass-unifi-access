@@ -71,6 +71,9 @@ An entity will get created for each door. Every time a door is accessed (entry, 
 ### Evacuation/Lockdown
 The evacuation (unlock all doors) and lockdown (lock all doors) switches apply to all doors and gates and **will sound the alarm** no matter which configuration you currently have in your terminal settings. The status will not update currently (known issue).
 
+### Thumbnail 
+A thumbnail of when the door is last accessed/locked/unlocked.
+
 ### Door lock rules (only applies to UAH)
 The following entities will be created: `input_select`, `input_number` and 2 `sensor` entities (end time and current rule).
 You are able to select one of the following rules via the `input_select`:

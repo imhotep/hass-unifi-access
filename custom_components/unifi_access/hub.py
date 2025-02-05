@@ -332,7 +332,7 @@ class UnifiAccessHub:
                     existing_door.thumbnail = self._get_thumbnail_image(
                         f"{self.host}{STATIC_URL}{update['data']['thumbnail']['url']}"
                     )
-                    existing_door.thumbnail_last_updated = datetime(
+                    existing_door.thumbnail_last_updated = datetime.fromtimestamp(
                         update["data"]["thumbnail"]["door_thumbnail_last_update"]
                     )
         return existing_door
