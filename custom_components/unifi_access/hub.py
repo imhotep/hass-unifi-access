@@ -306,28 +306,27 @@ class UnifiAccessHub:
                     door_id,
                 )
                 if "state" in update["data"]:
-                    if "dps" in update["data"]["state"]:
-                        existing_door.door_position_status = update["data"]["state"]["dps"]
+                    existing_door.door_position_status = update["data"]["state"].get(
+                        "dps", "close"
+                    )
                     existing_door.door_lock_relay_status = (
                         "lock"
-                        if update["data"]["state"]["lock"] == "locked"
+                        if update["data"]["state"].get("lock", "locked") == "locked"
                         else "unlock"
                     )
                     existing_door.lock_rule = ""
                     existing_door.lock_rule_ended_time = None
+                    lock_rule = None
                     if "remain_lock" in update["data"]["state"]:
-                        existing_door.lock_rule = update["data"]["state"][
-                            "remain_lock"
-                        ]["type"]
+                        lock_rule = "remain_lock"
+                    elif "remain_unlock" in update["data"]["state"]:
+                        lock_rule = "remain_unlock"
+                    if lock_rule:
+                        existing_door.lock_rule = update["data"]["state"][lock_rule][
+                            "type"
+                        ]
                         existing_door.lock_rule_ended_time = update["data"]["state"][
-                            "remain_lock"
-                        ]["until"]
-                    if "remain_unlock" in update["data"]["state"]:
-                        existing_door.lock_rule = update["data"]["state"][
-                            "remain_unlock"
-                        ]["type"]
-                        existing_door.lock_rule_ended_time = update["data"]["state"][
-                            "remain_unlock"
+                            lock_rule
                         ]["until"]
                 if "thumbnail" in update["data"]:
                     existing_door.thumbnail = self._get_thumbnail_image(
