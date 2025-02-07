@@ -306,7 +306,8 @@ class UnifiAccessHub:
                     door_id,
                 )
                 if "state" in update["data"]:
-                    existing_door.door_position_status = update["data"]["state"]["dps"]
+                    if "dps" in update["data"]["state"]:
+                        existing_door.door_position_status = update["data"]["state"]["dps"]
                     existing_door.door_lock_relay_status = (
                         "lock"
                         if update["data"]["state"]["lock"] == "locked"
