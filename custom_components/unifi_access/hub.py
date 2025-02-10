@@ -329,12 +329,15 @@ class UnifiAccessHub:
                             lock_rule
                         ]["until"]
                 if "thumbnail" in update["data"]:
-                    existing_door.thumbnail = self._get_thumbnail_image(
-                        f"{self.host}{STATIC_URL}{update['data']['thumbnail']['url']}"
-                    )
-                    existing_door.thumbnail_last_updated = datetime.fromtimestamp(
-                        update["data"]["thumbnail"]["door_thumbnail_last_update"]
-                    )
+                    try:
+                        existing_door.thumbnail = self._get_thumbnail_image(
+                            f"{self.host}{STATIC_URL}{update['data']['thumbnail']['url']}"
+                        )
+                        existing_door.thumbnail_last_updated = datetime.fromtimestamp(
+                            update["data"]["thumbnail"]["door_thumbnail_last_update"]
+                        )
+                    except (ApiError, ApiAuthError):
+                        _LOGGER.error("Could not get thumbnail for door id %s", door_id)
         return existing_door
 
     def on_message(self, ws: websocket.WebSocketApp, message):
