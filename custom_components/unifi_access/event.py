@@ -18,6 +18,7 @@ from .const import (
     DOORBELL_STOP_EVENT,
 )
 from .door import UnifiAccessDoor
+from .hub import UnifiAccessHub
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -28,15 +29,20 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Add event entity for passed config entry."""
+    hub: UnifiAccessHub = hass.data[DOMAIN][config_entry.entry_id]
 
-    coordinator = hass.data[DOMAIN]["coordinator"]
+    if hub.use_polling is False:
+        coordinator = hass.data[DOMAIN]["coordinator"]
 
-    async_add_entities(
-        (AccessEventEntity(hass, door) for door in coordinator.data.values()),
-    )
-    async_add_entities(
-        (DoorbellPressedEventEntity(hass, door) for door in coordinator.data.values()),
-    )
+        async_add_entities(
+            (AccessEventEntity(hass, door) for door in coordinator.data.values()),
+        )
+        async_add_entities(
+            (
+                DoorbellPressedEventEntity(hass, door)
+                for door in coordinator.data.values()
+            ),
+        )
 
 
 class AccessEventEntity(EventEntity):

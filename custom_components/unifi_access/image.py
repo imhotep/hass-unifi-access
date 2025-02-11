@@ -13,6 +13,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .door import UnifiAccessDoor
+from .hub import UnifiAccessHub
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,10 +27,12 @@ async def async_setup_entry(
 
     coordinator = hass.data[DOMAIN]["coordinator"]
     verify_ssl = config_entry.options.get("verify_ssl", False)
-    async_add_entities(
-        UnifiDoorImageEntity(hass, verify_ssl, door, config_entry.data["api_token"])
-        for door in coordinator.data.values()
-    )
+    hub: UnifiAccessHub = hass.data[DOMAIN][config_entry.entry_id]
+    if hub.use_polling is False:
+        async_add_entities(
+            UnifiDoorImageEntity(hass, verify_ssl, door, config_entry.data["api_token"])
+            for door in coordinator.data.values()
+        )
 
 
 class UnifiDoorImageEntity(ImageEntity):
