@@ -82,7 +82,7 @@ class TemporaryLockRuleSelectEntity(CoordinatorEntity, SelectEntity):
         ):
             self._attr_options.remove("lock_early")
         else:
-            self._attr_options.add("lock_early")
+            self._attr_options.append("lock_early")
 
     async def async_select_option(self, option: str) -> None:
         "Select Door Lock Rule."

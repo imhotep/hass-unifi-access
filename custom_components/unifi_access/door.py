@@ -147,3 +147,21 @@ class UnifiAccessDoor:
             _LOGGER.info(
                 "Event %s type %s for door %s fired", event, data["type"], self.name
             )
+
+    def __eq__(self, value) -> bool:
+        """Check if two doors are equal."""
+        if isinstance(value, UnifiAccessDoor):
+            return (
+                self.id == value.id
+                and self.name == value.name
+                and self.hub_type == value.hub_type
+                and self.door_position_status == value.door_position_status
+                and self.door_lock_relay_status == value.door_lock_relay_status
+                and self.lock_rule == value.lock_rule
+                and self.lock_rule_ended_time == value.lock_rule_ended_time
+            )
+        return False
+
+    def __repr__(self):
+        """Return string representation of door."""
+        return f"<UnifiAccessDoor id={self.id} name={self.name} hub_type={self.hub_type} door_position_status={self.door_position_status} door_lock_relay_status={self.door_lock_relay_status} lock_rule={self.lock_rule} lock_rule_ended_time={self.lock_rule_ended_time}>"

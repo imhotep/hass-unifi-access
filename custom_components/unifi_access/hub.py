@@ -119,12 +119,12 @@ class UnifiAccessHub:
             "Getting door updates from Unifi Access %s Use Polling %s. Doors? %s",
             self.host,
             self.use_polling,
-            self.doors,
+            self.doors.keys(),
         )
         data = self._make_http_request(f"{self.host}{DOORS_URL}")
 
         for _i, door in enumerate(data):
-            if door["is_bind_hub"]:
+            if door["is_bind_hub"] is True:
                 door_id = door["id"]
                 door_lock_rule = {"type": "", "ended_time": 0}
                 if self.supports_door_lock_rules:
@@ -138,6 +138,16 @@ class UnifiAccessHub:
                     ]
                     existing_door.door_lock_rule = door_lock_rule["type"]
                     existing_door.door_lock_ended_time = door_lock_rule["ended_time"]
+                    _LOGGER.debug(
+                        "Updated existing door, id: %s, name: %s, dps: %s, door_lock_relay_status: %s, door lock rule: %s, door lock rule ended time: %s using polling %s",
+                        door_id,
+                        door["name"],
+                        door["door_position_status"],
+                        door["door_lock_relay_status"],
+                        door_lock_rule["type"],
+                        door_lock_rule["ended_time"],
+                        self.use_polling,
+                    )
                 else:
                     self._doors[door_id] = UnifiAccessDoor(
                         door_id=door["id"],
@@ -148,25 +158,25 @@ class UnifiAccessHub:
                         door_lock_rule_ended_time=door_lock_rule["ended_time"],
                         hub=self,
                     )
+                    _LOGGER.debug(
+                        "Found new door, id: %s, name: %s, dps: %s, door_lock_relay_status: %s, door lock rule: %s, door lock rule ended time: %s, using polling: %s",
+                        door_id,
+                        door["name"],
+                        door["door_position_status"],
+                        door["door_lock_relay_status"],
+                        door_lock_rule["type"],
+                        door_lock_rule["ended_time"],
+                        self.use_polling,
+                    )
+            else:
+                _LOGGER.debug("Door %s is not bound to a hub. Ignoring", door)
+
         if self.update_t is None and self.use_polling is False:
+            _LOGGER.debug("Starting continuous updates. Polling disabled")
             self.start_continuous_updates()
 
+        _LOGGER.debug("Got doors %s", self.doors)
         return self._doors
-
-    def update_door(self, door_id: int) -> None:
-        """Get latest door data for a specific door."""
-        _LOGGER.info("Getting door update from Unifi Access with id %s", door_id)
-        updated_door = self._make_http_request(f"{self.host}{DOORS_URL}/{door_id}")
-        door_id = updated_door["id"]
-        _LOGGER.debug("got door update %s", updated_door)
-        if door_id in self.doors:
-            existing_door: UnifiAccessDoor = self.doors[door_id]
-            existing_door.door_lock_relay_status = updated_door[
-                "door_lock_relay_status"
-            ]
-            existing_door.door_position_status = updated_door["door_position_status"]
-            existing_door.name = updated_door["name"]
-            _LOGGER.debug("door %s updated", door_id)
 
     def authenticate(self, api_token: str) -> str:
         """Test if we can authenticate with the host."""
@@ -329,12 +339,15 @@ class UnifiAccessHub:
                             lock_rule
                         ]["until"]
                 if "thumbnail" in update["data"]:
-                    existing_door.thumbnail = self._get_thumbnail_image(
-                        f"{self.host}{STATIC_URL}{update['data']['thumbnail']['url']}"
-                    )
-                    existing_door.thumbnail_last_updated = datetime.fromtimestamp(
-                        update["data"]["thumbnail"]["door_thumbnail_last_update"]
-                    )
+                    try:
+                        existing_door.thumbnail = self._get_thumbnail_image(
+                            f"{self.host}{STATIC_URL}{update['data']['thumbnail']['url']}"
+                        )
+                        existing_door.thumbnail_last_updated = datetime.fromtimestamp(
+                            update["data"]["thumbnail"]["door_thumbnail_last_update"]
+                        )
+                    except (ApiError, ApiAuthError):
+                        _LOGGER.error("Could not get thumbnail for door id %s", door_id)
         return existing_door
 
     def on_message(self, ws: websocket.WebSocketApp, message):

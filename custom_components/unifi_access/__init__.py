@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+import homeassistant.helpers.entity_registry as er
 
 from .const import DOMAIN
 from .coordinator import UnifiAccessCoordinator
@@ -20,6 +23,22 @@ PLATFORMS: list[Platform] = [
     Platform.SENSOR,
     Platform.SWITCH,
 ]
+_LOGGER = logging.getLogger(__name__)
+
+
+async def remove_stale_entities(hass: HomeAssistant, entry_id: str):
+    """Remove entities that are stale."""
+    _LOGGER.debug("Removing stale entities")
+    registry = er.async_get(hass)
+    config_entry_entities = registry.entities.get_entries_for_config_entry_id(entry_id)
+    stale_entities = [
+        entity
+        for entity in config_entry_entities
+        if (entity.disabled or not hass.states.get(entity.entity_id))
+    ]
+    for entity in stale_entities:
+        _LOGGER.debug("Removing stale entity: %s", entity.entity_id)
+        registry.async_remove(entity.entity_id)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -37,6 +56,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN]["coordinator"] = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    await remove_stale_entities(hass, entry.entry_id)
 
     return True
 
