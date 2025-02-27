@@ -365,12 +365,12 @@ class UnifiAccessHub:
             match update["event"]:
                 case "access.dps_change":
                     door_id = update["data"]["door_id"]
-                    _LOGGER.info("DPS update for door id %s", door_id)
+                    _LOGGER.debug("DPS update for door id %s", door_id)
                     if door_id in self.doors:
                         existing_door = self.doors[door_id]
                         existing_door.door_position_status = update["data"]["status"]
                         _LOGGER.info(
-                            "DPS update for existing door %s with id %s status: %s",
+                            "DPS updated for existing door %s with id %s status: %s",
                             existing_door.name,
                             door_id,
                             update["data"]["status"],
