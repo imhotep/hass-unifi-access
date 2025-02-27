@@ -107,3 +107,6 @@ The Unifi Access API does *NOT* support door locking at the moment. You probably
 - door code via service
 
 Please create an issue if you have a feature request and pull requests are always welcome!
+
+# Support my work
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/aniskadri)
