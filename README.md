@@ -65,8 +65,9 @@ An entity will get created for each door. Every time a door is accessed (entry, 
 - door_name
 - door_id
 - authentication # this is the method used to initiate the event ("REMOTE_THROUGH_UAH" , "NFC" , "MOBILE_TAP" , "PIN_CODE")
-- actor # this is the name of the user that accessed the door. If set to N/A that means UNAUTHORIZED ACCESS!
+- actor # this is the name of the user that accessed the door. If set to N/A that means UNAUTHORIZED ACCESS! In some cases actor may still be set. Check the result value. 
 - type # `unifi_access_entry` or `unifi_access_exit`
+- result # the result of the entry/exit event ("ACCESS" , "BLOCKED" , "INCOMPLETE") There may be other values.
 
 ### Evacuation/Lockdown
 The evacuation (unlock all doors) and lockdown (lock all doors) switches apply to all doors and gates and **will sound the alarm** no matter which configuration you currently have in your terminal settings. The status will not update currently (known issue).
