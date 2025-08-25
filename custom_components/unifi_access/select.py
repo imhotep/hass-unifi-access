@@ -74,15 +74,21 @@ class TemporaryLockRuleSelectEntity(CoordinatorEntity, SelectEntity):
         return self.door.lock_rule
 
     def _update_options(self):
-        "Update Door Lock Rules."
+        "Update Door Lock Rules without duplications."
         self._attr_current_option = self.coordinator.data[self.door.id].lock_rule
-        if (
-            self._attr_current_option != "schedule"
-            and "lock_early" in self._attr_options
-        ):
-            self._attr_options.remove("lock_early")
-        else:
-            self._attr_options.append("lock_early")
+
+        base_options = [
+            "",
+            "keep_lock",
+            "keep_unlock",
+            "custom",
+            "reset",
+        ]
+
+        if self._attr_current_option == "schedule":
+            base_options.append("lock_early")
+
+        self._attr_options = base_options
 
     async def async_select_option(self, option: str) -> None:
         "Select Door Lock Rule."

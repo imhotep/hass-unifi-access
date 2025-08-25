@@ -45,7 +45,7 @@ class UnifiDoorLockEntity(CoordinatorEntity, LockEntity):
 
     def __init__(self, coordinator, door_id) -> None:
         """Initialize Unifi Access Door Lock."""
-        super().__init__(coordinator, context=id)
+        super().__init__(coordinator, context=door_id)
         self.door: UnifiAccessDoor = self.coordinator.data[door_id]
         self._attr_unique_id = self.door.id
         self._attr_translation_placeholders = {"door_name": self.door.name}
