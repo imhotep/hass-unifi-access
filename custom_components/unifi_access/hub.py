@@ -348,6 +348,9 @@ class UnifiAccessHub:
                         )
                     except (ApiError, ApiAuthError):
                         _LOGGER.error("Could not get thumbnail for door id %s", door_id)
+                # Update device_ids for the door (used in access.logs.add)
+                if "device_ids" in update["data"]:
+                    existing_door.device_ids = update["data"]["device_ids"]
         return existing_door
 
     def on_message(self, ws: websocket.WebSocketApp, message):
@@ -428,6 +431,7 @@ class UnifiAccessHub:
                             existing_door.name,
                             doorbell_request_id,
                         )
+
                 case "access.logs.add":
                     _LOGGER.debug("access.logs.add %s", update["data"])
                     door = next(
@@ -439,13 +443,17 @@ class UnifiAccessHub:
                         None,
                     )
                     if door is not None:
-                        door_id = door["id"]
-                        _LOGGER.debug("access log added for door id %s", door_id)
-                        if door_id in self.doors:
-                            existing_door = self.doors[door_id]
+                        device_id = door["id"]
+                        _LOGGER.debug("access log added for device id %s", device_id)
+                        #Find the location ID where device_id is in door.device_ids
+                        existing_door = None
+                        for door in self.doors.values():
+                            if device_id in door.device_ids: #Check device_ids list
+                                existing_door = door
+                                break
+                        if existing_door is not None:
                             actor = update["data"]["_source"]["actor"]["display_name"]
                             result = update["data"]["_source"]["event"]["result"]
-                            # "REMOTE_THROUGH_UAH" , "NFC" , "MOBILE_TAP" , "PIN_CODE"
                             authentication = update["data"]["_source"][
                                 "authentication"
                             ]["credential_provider"]
@@ -462,7 +470,7 @@ class UnifiAccessHub:
                                 event = "access"
                                 event_attributes = {
                                     "door_name": existing_door.name,
-                                    "door_id": door_id,
+                                    "door_id": existing_door.id, #Use Location ID
                                     "actor": actor,
                                     "authentication": authentication,
                                     "type": ACCESS_EVENT.format(type=access_type),
@@ -471,7 +479,7 @@ class UnifiAccessHub:
                                 _LOGGER.info(
                                     "Door name %s with id %s accessed by %s. authentication %s, access type: %s, result: %s",
                                     existing_door.name,
-                                    door_id,
+                                    existing_door.id,
                                     actor,
                                     authentication,
                                     access_type,

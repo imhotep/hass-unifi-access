@@ -37,6 +37,7 @@ class UnifiAccessDoor:
         self.lock_rule = door_lock_rule
         self.lock_rule_interval = 10
         self.lock_rule_ended_time = door_lock_rule_ended_time
+        self.device_ids = []  #added to not rely on dymamic assignment in _handle_location_upate_v2
         self.thumbnail = (
             b"\x89PNG\r\n\x1a\n"
             b"\x00\x00\x00\rIHDR\x00\x00\x00\x01"
