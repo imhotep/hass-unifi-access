@@ -83,6 +83,7 @@ You are able to select one of the following rules via the `input_select`:
 - **custom**: door is unlocked for a given interval (use the input_number to define how long. Default is 10 minutes).
 - **reset**: clear all lock rules
 - **lock_early**: locks the door if it's currently on an unlock schedule.
+- **lock_now**: locks the door if it's currently on an unlock schedule OR if it's unlocked temporarily via a locking rule.
 
 # Example automation
 
