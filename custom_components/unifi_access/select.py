@@ -4,7 +4,7 @@ from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
@@ -16,7 +16,7 @@ from .hub import UnifiAccessHub
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Add select entity for passed config entry."""
     hub: UnifiAccessHub = hass.data[DOMAIN][config_entry.entry_id]
@@ -55,6 +55,7 @@ class TemporaryLockRuleSelectEntity(CoordinatorEntity, SelectEntity):
             "custom",
             "reset",
             "lock_early",
+            "lock_now",
         ]
         self._update_options()
 

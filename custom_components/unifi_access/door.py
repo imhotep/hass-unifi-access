@@ -29,6 +29,7 @@ class UnifiAccessDoor:
         self._is_unlocking = False
         self._hub = hub
         self.hub_type = "UAH"
+        self.hub_id = None
         self._id = door_id
         self.name = name
         self.door_position_status = door_position_status
@@ -155,6 +156,7 @@ class UnifiAccessDoor:
                 self.id == value.id
                 and self.name == value.name
                 and self.hub_type == value.hub_type
+                and self.hub_id == value.hub_id
                 and self.door_position_status == value.door_position_status
                 and self.door_lock_relay_status == value.door_lock_relay_status
                 and self.lock_rule == value.lock_rule
@@ -164,4 +166,4 @@ class UnifiAccessDoor:
 
     def __repr__(self):
         """Return string representation of door."""
-        return f"<UnifiAccessDoor id={self.id} name={self.name} hub_type={self.hub_type} door_position_status={self.door_position_status} door_lock_relay_status={self.door_lock_relay_status} lock_rule={self.lock_rule} lock_rule_ended_time={self.lock_rule_ended_time}>"
+        return f"<UnifiAccessDoor id={self.id} name={self.name} hub_type={self.hub_type} hub_id={self.hub_id} door_position_status={self.door_position_status} door_lock_relay_status={self.door_lock_relay_status} lock_rule={self.lock_rule} lock_rule_ended_time={self.lock_rule_ended_time}>"

@@ -428,6 +428,27 @@ class UnifiAccessHub:
                             existing_door.name,
                             doorbell_request_id,
                         )
+                # Currently no way to know via HTTP API which door is associated with which device/hub
+                # Even though we can fetch devices and doors separately, there is no link between them
+                # So we have to rely on websocket messages to link them together
+                case "access.data.device.update":
+                    _LOGGER.debug(
+                        "access.data.device.update: device type %s", update["data"]
+                    )
+                    device_id = update["data"]["unique_id"]
+                    device_type = update["data"]["device_type"]
+                    door_id = update["data"].get("door", {}).get("unique_id")
+                    if door_id in self.doors:
+                        existing_door = self.doors[door_id]
+                        existing_door.hub_type = device_type
+                        existing_door.hub_id = device_id
+                        _LOGGER.info(
+                            "Door name %s door id %s is now associated with hub type %s hub id %s",
+                            existing_door.name,
+                            existing_door.id,
+                            existing_door.hub_type,
+                            existing_door.hub_id,
+                        )
                 case "access.logs.add":
                     _LOGGER.debug("access.logs.add %s", update["data"])
                     door = next(
@@ -439,12 +460,23 @@ class UnifiAccessHub:
                         None,
                     )
                     if door is not None:
-                        door_id = door["id"]
-                        _LOGGER.debug("access log added for door id %s", door_id)
-                        if door_id in self.doors:
-                            existing_door = self.doors[door_id]
+                        # Access API 3.4.31 has a bug where the door id is actually the hub id
+                        door_hub_id = door["id"]
+                        existing_door = next(
+                            (
+                                door
+                                for door in self.doors.values()
+                                if getattr(door, "hub_id", None) == door_hub_id
+                            ),
+                            None,
+                        )
+                        if existing_door is not None:
+                            _LOGGER.debug(
+                                "access log added for door id %s, hub id %s",
+                                existing_door.id,
+                                existing_door.hub_id,
+                            )
                             actor = update["data"]["_source"]["actor"]["display_name"]
-                            result = update["data"]["_source"]["event"]["result"]
                             # "REMOTE_THROUGH_UAH" , "NFC" , "MOBILE_TAP" , "PIN_CODE"
                             authentication = update["data"]["_source"][
                                 "authentication"
@@ -462,20 +494,18 @@ class UnifiAccessHub:
                                 event = "access"
                                 event_attributes = {
                                     "door_name": existing_door.name,
-                                    "door_id": door_id,
+                                    "door_id": existing_door.id,
                                     "actor": actor,
                                     "authentication": authentication,
                                     "type": ACCESS_EVENT.format(type=access_type),
-                                    "result": result,
                                 }
                                 _LOGGER.info(
-                                    "Door name %s with id %s accessed by %s. authentication %s, access type: %s, result: %s",
+                                    "Door name %s with id %s accessed by %s. authentication %s, access type: %s",
                                     existing_door.name,
-                                    door_id,
+                                    existing_door.id,
                                     actor,
                                     authentication,
                                     access_type,
-                                    result,
                                 )
                 case "access.hw.door_bell":
                     door_id = update["data"]["door_id"]
