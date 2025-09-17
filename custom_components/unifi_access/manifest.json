@@ -11,5 +11,5 @@
   "requirements": [
     "websocket-client==1.8.0"
   ],
-  "version": "1.3.0"
+  "version": "1.3.1"
 }
