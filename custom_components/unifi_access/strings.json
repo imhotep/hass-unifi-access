@@ -78,7 +78,8 @@
           "keep_unlock": "Keep it unlocked",
           "custom": "Custom (set interval)",
           "reset": "Reset rule",
-          "lock_early": "Lock early"
+          "lock_early": "Lock early",
+          "lock_now": "Lock now"
         }
       }
     }
