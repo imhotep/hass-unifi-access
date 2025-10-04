@@ -44,7 +44,9 @@ class DoorLockRule(TypedDict):
     This class defines the different locking rules.
     """
 
-    type: Literal["keep_lock", "keep_unlock", "custom", "reset", "lock_early"]
+    type: Literal[
+        "keep_lock", "keep_unlock", "custom", "reset", "lock_early", "lock_now"
+    ]
     interval: int
 
 
@@ -438,11 +440,11 @@ class UnifiAccessHub:
                     device_id = update["data"]["unique_id"]
                     device_type = update["data"]["device_type"]
                     door_id = update["data"].get("door", {}).get("unique_id")
-                    if door_id in self.doors:
+                    if door_id in self.doors and self.doors[door_id].hub_id is None:
                         existing_door = self.doors[door_id]
                         existing_door.hub_type = device_type
                         existing_door.hub_id = device_id
-                        _LOGGER.info(
+                        _LOGGER.debug(
                             "Door name %s door id %s is now associated with hub type %s hub id %s",
                             existing_door.name,
                             existing_door.id,
