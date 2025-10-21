@@ -8,10 +8,16 @@
 - Unifi Access Hub (UAH) :white_check_mark:
 - Unifi Access Hub (UAH-DOOR) :white_check_mark:
 - Unifi Access Intercom (UA-Intercom) :white_check_mark:
+- Unifi Access G3 Intercom (UA-G3-Intercom) :white_check_mark:
 - Unifi Access Hub Enterprise (UAH-Ent) :white_check_mark:
 - Unifi Gate Hub (UGT) :white_check_mark:
 - Unifi Access Ultra (UA-Ultra) :white_check_mark:
 - Unifi Access Door Mini (UA-Hub-Door-Mini) :white_check_mark:
+
+# Special Character Support
+- **Full Unicode Support**: Device names with special characters (ö, ä, ü, etc.) are now fully supported
+- **International Names**: Works reliably with device names in German, French, and other languages using Unicode characters
+- **Doorbell Events**: Fixed issue where doorbell press events were not detected when device names contained special characters
 
 # Getting Unifi Access API Token
 - Log in to Unifi Access and Click on Security -> Advanced -> API Token
