@@ -138,11 +138,5 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         hass.data[DOMAIN].pop(entry.entry_id)
-        
-        # Remove services if this is the last config entry
-        if not hass.data[DOMAIN]:
-            hass.services.async_remove(DOMAIN, SERVICE_ENABLE_USER)
-            hass.services.async_remove(DOMAIN, SERVICE_DISABLE_USER)
-            hass.services.async_remove(DOMAIN, SERVICE_UPDATE_USER_PIN)
 
     return unload_ok

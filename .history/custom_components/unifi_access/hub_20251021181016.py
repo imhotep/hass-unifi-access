@@ -38,8 +38,7 @@ from .user import UnifiAccessUser
 
 _LOGGER = logging.getLogger(__name__)
 
-# Type alias for emergency data
-EmergencyData = dict[str, bool]
+type EmergencyData = dict[str, bool]
 
 
 class DoorLockRule(TypedDict):

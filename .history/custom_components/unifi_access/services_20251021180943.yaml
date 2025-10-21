@@ -1,0 +1,62 @@
+enable_user:
+  name: Enable User
+  description: Enable access for a specific UniFi Access user
+  target:
+    integration: unifi_access
+  fields:
+    user_id:
+      name: User ID
+      description: The ID of the user to enable
+      required: true
+      selector:
+        text:
+    config_entry_id:
+      name: Config Entry ID  
+      description: The configuration entry ID for the UniFi Access integration
+      required: true
+      selector:
+        text:
+
+disable_user:
+  name: Disable User
+  description: Disable access for a specific UniFi Access user
+  target:
+    integration: unifi_access
+  fields:
+    user_id:
+      name: User ID
+      description: The ID of the user to disable
+      required: true
+      selector:
+        text:
+    config_entry_id:
+      name: Config Entry ID
+      description: The configuration entry ID for the UniFi Access integration  
+      required: true
+      selector:
+        text:
+
+update_user_pin:
+  name: Update User PIN
+  description: Update the PIN code for a specific UniFi Access user
+  target:
+    integration: unifi_access
+  fields:
+    user_id:
+      name: User ID
+      description: The ID of the user to update
+      required: true
+      selector:
+        text:
+    pin:
+      name: PIN Code
+      description: The new PIN code (leave empty to remove PIN)
+      required: false
+      selector:
+        text:
+    config_entry_id:
+      name: Config Entry ID
+      description: The configuration entry ID for the UniFi Access integration
+      required: true
+      selector:
+        text:

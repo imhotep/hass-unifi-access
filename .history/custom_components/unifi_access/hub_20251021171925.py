@@ -10,7 +10,8 @@ import json
 import logging
 import ssl
 from threading import Thread
-from typing import Any, Literal, Optional, TypedDict, cast
+from typing import Any, Literal, TypedDict, cast
+import unicodedata
 from urllib.parse import urlparse
 
 from requests import request
@@ -29,17 +30,13 @@ from .const import (
     DOORS_URL,
     STATIC_URL,
     UNIFI_ACCESS_API_PORT,
-    USERS_URL,
-    USER_UPDATE_URL,
 )
 from .door import UnifiAccessDoor
 from .errors import ApiAuthError, ApiError
-from .user import UnifiAccessUser
 
 _LOGGER = logging.getLogger(__name__)
 
-# Type alias for emergency data
-EmergencyData = dict[str, bool]
+type EmergencyData = dict[str, bool]
 
 
 class DoorLockRule(TypedDict):
@@ -62,6 +59,18 @@ class DoorLockRuleStatus(TypedDict):
 
     type: Literal["schedule", "keep_lock", "keep_unlock", "custom", "lock_early", ""]
     ended_time: int
+
+
+def normalize_door_name(name: str) -> str:
+    """Normalize door name for comparison.
+    
+    This function normalizes Unicode strings to handle special characters
+    like German umlauts (ö, ä, ü) correctly. It converts to NFC (canonical
+    composition) normalization form and strips whitespace.
+    """
+    if not name:
+        return ""
+    return unicodedata.normalize('NFC', name.strip())
 
 
 class UnifiAccessHub:
@@ -101,7 +110,6 @@ class UnifiAccessHub:
             "Connection": "Upgrade",
         }
         self._doors: dict[str, UnifiAccessDoor] = {}
-        self._users: dict[str, UnifiAccessUser] = {}
         self.evacuation = False
         self.lockdown = False
         self.supports_door_lock_rules = True
@@ -113,11 +121,6 @@ class UnifiAccessHub:
     def doors(self):
         """Get current doors."""
         return self._doors
-
-    @property
-    def users(self):
-        """Get current users."""
-        return self._users
 
     def set_api_token(self, api_token):
         """Set API Access Token."""
@@ -143,7 +146,7 @@ class UnifiAccessHub:
                     door_lock_rule = self.get_door_lock_rule(door_id)
                 if door_id in self.doors:
                     existing_door = self.doors[door_id]
-                    existing_door.name = door["name"]
+                    existing_door.name = normalize_door_name(door["name"])
                     existing_door.door_position_status = door["door_position_status"]
                     existing_door.door_lock_relay_status = door[
                         "door_lock_relay_status"
@@ -163,7 +166,7 @@ class UnifiAccessHub:
                 else:
                     self._doors[door_id] = UnifiAccessDoor(
                         door_id=door["id"],
-                        name=door["name"],
+                        name=normalize_door_name(door["name"]),
                         door_position_status=door["door_position_status"],
                         door_lock_relay_status=door["door_lock_relay_status"],
                         door_lock_rule=door_lock_rule["type"],
@@ -268,84 +271,6 @@ class UnifiAccessHub:
         self._make_http_request(
             f"{self.host}{DOOR_UNLOCK_URL}".format(door_id=door_id), "PUT"
         )
-
-    def get_users(self) -> dict[str, UnifiAccessUser]:
-        """Get latest user data."""
-        _LOGGER.debug("Getting user updates from Unifi Access %s", self.host)
-        data = self._make_http_request(f"{self.host}{USERS_URL}")
-        
-        for user_data in data:
-            user_id = user_data["id"]
-            if user_id in self.users:
-                # Update existing user
-                existing_user = self.users[user_id]
-                existing_user.update_from_data(user_data)
-                _LOGGER.debug(
-                    "Updated existing user, id: %s, name: %s, status: %s",
-                    user_id,
-                    user_data.get("full_name", "Unknown"),
-                    user_data.get("status", "unknown")
-                )
-            else:
-                # Create new user
-                self._users[user_id] = UnifiAccessUser(
-                    user_id=user_id,
-                    data=user_data,
-                    hub=self,
-                )
-                _LOGGER.debug(
-                    "Found new user, id: %s, name: %s, status: %s",
-                    user_id,
-                    user_data.get("full_name", "Unknown"),
-                    user_data.get("status", "unknown")
-                )
-                
-        _LOGGER.debug("Got users %s", list(self.users.keys()))
-        return self._users
-
-    def update_user_status(self, user_id: str, enabled: bool) -> None:
-        """Update user status (enable/disable)."""
-        status = "active" if enabled else "inactive"
-        _LOGGER.info("Setting user %s status to %s", user_id, status)
-        
-        update_data = {
-            "status": status
-        }
-        
-        self._make_http_request(
-            f"{self.host}{USER_UPDATE_URL}".format(user_id=user_id),
-            "PATCH",
-            update_data
-        )
-        
-        # Update local user object if it exists
-        if user_id in self.users:
-            self.users[user_id].status = status
-            
-        _LOGGER.debug("User %s status updated to %s", user_id, status)
-
-    def update_user_pin(self, user_id: str, pin: Optional[str]) -> None:
-        """Update user PIN code."""
-        _LOGGER.info("Updating PIN for user %s", user_id)
-        
-        update_data = {}
-        if pin:
-            update_data["pin"] = pin
-        else:
-            # Setting pin to empty string typically removes it
-            update_data["pin"] = ""
-            
-        self._make_http_request(
-            f"{self.host}{USER_UPDATE_URL}".format(user_id=user_id),
-            "PATCH", 
-            update_data
-        )
-        
-        # Update local user object if it exists
-        if user_id in self.users:
-            self.users[user_id].pin = pin
-            
-        _LOGGER.debug("User %s PIN updated", user_id)
 
     def _make_http_request(self, url, method="GET", data=None) -> dict:
         """Make HTTP request to Unifi Access API server."""
@@ -471,14 +396,20 @@ class UnifiAccessHub:
                 case "access.remote_view":
                     door_name = update["data"]["door_name"]
                     _LOGGER.debug("access.remote_view %s", door_name)
+                    normalized_door_name = normalize_door_name(door_name)
+                    _LOGGER.debug("Normalized door name from websocket: '%s' -> '%s'", door_name, normalized_door_name)
                     existing_door = next(
                         (
                             door
                             for door in self.doors.values()
-                            if door.name == door_name
+                            if normalize_door_name(door.name) == normalized_door_name
                         ),
                         None,
                     )  # FIXME this is likely unreliable. API does not seem to provide door id forthis access.remote_view  # pylint: disable=fixme
+                    if existing_door is None:
+                        _LOGGER.warning("Could not find door with normalized name '%s'. Available doors: %s", 
+                                        normalized_door_name, 
+                                        [f"'{door.name}' (normalized: '{normalize_door_name(door.name)}')" for door in self.doors.values()])
                     if existing_door is not None:
                         existing_door.doorbell_request_id = update["data"]["request_id"]
                         event = "doorbell_press"

@@ -10,7 +10,7 @@ import json
 import logging
 import ssl
 from threading import Thread
-from typing import Any, Literal, Optional, TypedDict, cast
+from typing import Any, Literal, TypedDict, cast
 from urllib.parse import urlparse
 
 from requests import request
@@ -38,8 +38,7 @@ from .user import UnifiAccessUser
 
 _LOGGER = logging.getLogger(__name__)
 
-# Type alias for emergency data
-EmergencyData = dict[str, bool]
+type EmergencyData = dict[str, bool]
 
 
 class DoorLockRule(TypedDict):
@@ -324,7 +323,7 @@ class UnifiAccessHub:
             
         _LOGGER.debug("User %s status updated to %s", user_id, status)
 
-    def update_user_pin(self, user_id: str, pin: Optional[str]) -> None:
+    def update_user_pin(self, user_id: str, pin: str | None) -> None:
         """Update user PIN code."""
         _LOGGER.info("Updating PIN for user %s", user_id)
         

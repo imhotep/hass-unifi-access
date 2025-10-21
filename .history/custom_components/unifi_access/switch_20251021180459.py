@@ -25,27 +25,18 @@ async def async_setup_entry(
     """Add switch entity for passed config entry."""
     hub: UnifiAccessHub = hass.data[DOMAIN][config_entry.entry_id]
 
-    # Emergency switches (evacuation and lockdown)
-    emergency_coordinator: UnifiAccessEvacuationAndLockdownSwitchCoordinator = (
+    coordinator: UnifiAccessEvacuationAndLockdownSwitchCoordinator = (
         UnifiAccessEvacuationAndLockdownSwitchCoordinator(hass, hub)
     )
-    await emergency_coordinator.async_config_entry_first_refresh()
 
-    # User management switches
-    user_coordinator: UnifiAccessUserCoordinator = UnifiAccessUserCoordinator(hass, hub)
-    await user_coordinator.async_config_entry_first_refresh()
+    await coordinator.async_config_entry_first_refresh()
 
-    # Create emergency switches
-    switches = [
-        EvacuationSwitch(hass, hub, emergency_coordinator),
-        LockdownSwitch(hass, hub, emergency_coordinator),
-    ]
-    
-    # Create user switches for each user
-    for user in hub.users.values():
-        switches.append(UserSwitch(hass, hub, user_coordinator, user))
-
-    async_add_entities(switches)
+    async_add_entities(
+        [
+            EvacuationSwitch(hass, hub, coordinator),
+            LockdownSwitch(hass, hub, coordinator),
+        ]
+    )
 
 
 class EvacuationSwitch(CoordinatorEntity, SwitchEntity):
@@ -173,77 +164,3 @@ class LockdownSwitch(CoordinatorEntity, SwitchEntity):
         """Remove Unifi Access Lockdown Switch from Home Assistant."""
         await super().async_will_remove_from_hass()
         self.hub.remove_callback(self.async_write_ha_state)
-
-
-class UserSwitch(CoordinatorEntity, SwitchEntity):
-    """Unifi Access User Switch for enable/disable functionality."""
-
-    _attr_has_entity_name = True
-    should_poll = False
-
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        hub: UnifiAccessHub,
-        coordinator: UnifiAccessUserCoordinator,
-        user,
-    ) -> None:
-        """Initialize Unifi Access User Switch."""
-        super().__init__(coordinator, context=f"user_{user.id}")
-        self.hass = hass
-        self.hub = hub
-        self.user = user
-        self._attr_unique_id = f"unifi_access_user_{user.id}"
-        self._attr_name = f"{user.full_name} Access"
-        
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Get Unifi Access User Switch device information."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, f"unifi_access_user_{self.user.id}")},
-            name=f"User: {self.user.full_name}",
-            model="User",
-            manufacturer="Unifi",
-            via_device=(DOMAIN, "unifi_access_all_doors"),
-        )
-
-    @property
-    def is_on(self) -> bool:
-        """Get Unifi Access User Switch status."""
-        return self.user.is_enabled
-
-    @property
-    def icon(self) -> str:
-        """Return the icon for the user switch."""
-        return "mdi:account" if self.is_on else "mdi:account-off"
-
-    async def async_turn_off(self, **kwargs: Any) -> None:
-        """Disable the user."""
-        await self.hass.async_add_executor_job(
-            self.hub.update_user_status, self.user.id, False
-        )
-        await self.coordinator.async_request_refresh()
-
-    async def async_turn_on(self, **kwargs: Any) -> None:
-        """Enable the user."""
-        await self.hass.async_add_executor_job(
-            self.hub.update_user_status, self.user.id, True
-        )
-        await self.coordinator.async_request_refresh()
-
-    def _handle_coordinator_update(self) -> None:
-        """Handle Unifi Access User Switch updates from coordinator."""
-        # Update the user object from the coordinator data
-        if self.user.id in self.hub.users:
-            self.user = self.hub.users[self.user.id]
-        self.async_write_ha_state()
-
-    async def async_added_to_hass(self) -> None:
-        """Add Unifi Access User Switch to Home Assistant."""
-        await super().async_added_to_hass()
-        self.user.register_callback(self.async_write_ha_state)
-
-    async def async_will_remove_from_hass(self) -> None:
-        """Remove Unifi Access User Switch from Home Assistant."""
-        await super().async_will_remove_from_hass()
-        self.user.remove_callback(self.async_write_ha_state)

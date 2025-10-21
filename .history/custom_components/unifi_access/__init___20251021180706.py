@@ -113,22 +113,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    # Register services if not already registered
-    if not hass.services.has_service(DOMAIN, SERVICE_ENABLE_USER):
-        hass.services.async_register(
-            DOMAIN, SERVICE_ENABLE_USER, async_enable_user_service, USER_SERVICE_SCHEMA
-        )
-        
-    if not hass.services.has_service(DOMAIN, SERVICE_DISABLE_USER):
-        hass.services.async_register(
-            DOMAIN, SERVICE_DISABLE_USER, async_disable_user_service, USER_SERVICE_SCHEMA
-        )
-        
-    if not hass.services.has_service(DOMAIN, SERVICE_UPDATE_USER_PIN):
-        hass.services.async_register(
-            DOMAIN, SERVICE_UPDATE_USER_PIN, async_update_user_pin_service, UPDATE_PIN_SERVICE_SCHEMA
-        )
-
     await remove_stale_entities(hass, entry.entry_id)
 
     return True
@@ -138,11 +122,5 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         hass.data[DOMAIN].pop(entry.entry_id)
-        
-        # Remove services if this is the last config entry
-        if not hass.data[DOMAIN]:
-            hass.services.async_remove(DOMAIN, SERVICE_ENABLE_USER)
-            hass.services.async_remove(DOMAIN, SERVICE_DISABLE_USER)
-            hass.services.async_remove(DOMAIN, SERVICE_UPDATE_USER_PIN)
 
     return unload_ok

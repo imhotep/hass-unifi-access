@@ -152,9 +152,8 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-# Local PR description files
+# Local PR description file
 PR_DESCRIPTION.md
-WEBSOCKET_PR_DESCRIPTION.md
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
