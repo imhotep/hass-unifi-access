@@ -69,3 +69,31 @@ class UnifiAccessEvacuationAndLockdownSwitchCoordinator(DataUpdateCoordinator):
             raise ConfigEntryAuthFailed from err
         except ApiError as err:
             raise UpdateFailed("Error communicating with API") from err
+
+
+class UnifiAccessUserCoordinator(DataUpdateCoordinator):
+    """Unifi Access User Coordinator."""
+
+    def __init__(self, hass: HomeAssistant, hub) -> None:
+        """Initialize Unifi Access User Coordinator."""
+        update_interval = timedelta(seconds=30) if hub.use_polling is True else None
+
+        super().__init__(
+            hass,
+            _LOGGER,
+            name="Unifi Access User Coordinator",
+            update_interval=update_interval,
+        )
+        self.hub = hub
+
+    async def _async_update_data(self):
+        """Handle Unifi Access User Coordinator updates."""
+        try:
+            async with asyncio.timeout(10):
+                return await self.hass.async_add_executor_job(
+                    self.hub.get_users
+                )
+        except ApiAuthError as err:
+            raise ConfigEntryAuthFailed from err
+        except ApiError as err:
+            raise UpdateFailed("Error communicating with API") from err

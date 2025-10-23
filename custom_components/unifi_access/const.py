@@ -10,6 +10,8 @@ DOOR_LOCK_RULE_URL = "/api/v1/developer/doors/{door_id}/lock_rule"
 DEVICE_NOTIFICATIONS_URL = "/api/v1/developer/devices/notifications"
 DOORS_EMERGENCY_URL = "/api/v1/developer/doors/settings/emergency"
 STATIC_URL = "/api/v1/developer/system/static"
+USERS_URL = "/api/v1/developer/users"
+USER_UPDATE_URL = "/api/v1/developer/users/{user_id}"
 
 DOORBELL_EVENT = "doorbell_press"
 DOORBELL_START_EVENT = "unifi_access_doorbell_start"

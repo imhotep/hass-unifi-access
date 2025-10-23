@@ -152,6 +152,13 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
+# Local PR description files
+PR_DESCRIPTION.md
+WEBSOCKET_PR_DESCRIPTION.md
+
+# VS Code Local History
+.history/
+
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore

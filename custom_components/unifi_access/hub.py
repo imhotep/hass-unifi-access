@@ -10,7 +10,7 @@ import json
 import logging
 import ssl
 from threading import Thread
-from typing import Any, Literal, TypedDict, cast
+from typing import Any, Literal, Optional, TypedDict, cast
 from urllib.parse import urlparse
 
 from requests import request
@@ -29,13 +29,17 @@ from .const import (
     DOORS_URL,
     STATIC_URL,
     UNIFI_ACCESS_API_PORT,
+    USERS_URL,
+    USER_UPDATE_URL,
 )
 from .door import UnifiAccessDoor
 from .errors import ApiAuthError, ApiError
+from .user import UnifiAccessUser
 
 _LOGGER = logging.getLogger(__name__)
 
-type EmergencyData = dict[str, bool]
+# Type alias for emergency data
+EmergencyData = dict[str, bool]
 
 
 class DoorLockRule(TypedDict):
@@ -97,6 +101,7 @@ class UnifiAccessHub:
             "Connection": "Upgrade",
         }
         self._doors: dict[str, UnifiAccessDoor] = {}
+        self._users: dict[str, UnifiAccessUser] = {}
         self.evacuation = False
         self.lockdown = False
         self.supports_door_lock_rules = True
@@ -108,6 +113,11 @@ class UnifiAccessHub:
     def doors(self):
         """Get current doors."""
         return self._doors
+
+    @property
+    def users(self):
+        """Get current users."""
+        return self._users
 
     def set_api_token(self, api_token):
         """Set API Access Token."""
@@ -258,6 +268,84 @@ class UnifiAccessHub:
         self._make_http_request(
             f"{self.host}{DOOR_UNLOCK_URL}".format(door_id=door_id), "PUT"
         )
+
+    def get_users(self) -> dict[str, UnifiAccessUser]:
+        """Get latest user data."""
+        _LOGGER.debug("Getting user updates from Unifi Access %s", self.host)
+        data = self._make_http_request(f"{self.host}{USERS_URL}")
+        
+        for user_data in data:
+            user_id = user_data["id"]
+            if user_id in self.users:
+                # Update existing user
+                existing_user = self.users[user_id]
+                existing_user.update_from_data(user_data)
+                _LOGGER.debug(
+                    "Updated existing user, id: %s, name: %s, status: %s",
+                    user_id,
+                    user_data.get("full_name", "Unknown"),
+                    user_data.get("status", "unknown")
+                )
+            else:
+                # Create new user
+                self._users[user_id] = UnifiAccessUser(
+                    user_id=user_id,
+                    data=user_data,
+                    hub=self,
+                )
+                _LOGGER.debug(
+                    "Found new user, id: %s, name: %s, status: %s",
+                    user_id,
+                    user_data.get("full_name", "Unknown"),
+                    user_data.get("status", "unknown")
+                )
+                
+        _LOGGER.debug("Got users %s", list(self.users.keys()))
+        return self._users
+
+    def update_user_status(self, user_id: str, enabled: bool) -> None:
+        """Update user status (enable/disable)."""
+        status = "active" if enabled else "inactive"
+        _LOGGER.info("Setting user %s status to %s", user_id, status)
+        
+        update_data = {
+            "status": status
+        }
+        
+        self._make_http_request(
+            f"{self.host}{USER_UPDATE_URL}".format(user_id=user_id),
+            "PATCH",
+            update_data
+        )
+        
+        # Update local user object if it exists
+        if user_id in self.users:
+            self.users[user_id].status = status
+            
+        _LOGGER.debug("User %s status updated to %s", user_id, status)
+
+    def update_user_pin(self, user_id: str, pin: Optional[str]) -> None:
+        """Update user PIN code."""
+        _LOGGER.info("Updating PIN for user %s", user_id)
+        
+        update_data = {}
+        if pin:
+            update_data["pin"] = pin
+        else:
+            # Setting pin to empty string typically removes it
+            update_data["pin"] = ""
+            
+        self._make_http_request(
+            f"{self.host}{USER_UPDATE_URL}".format(user_id=user_id),
+            "PATCH", 
+            update_data
+        )
+        
+        # Update local user object if it exists
+        if user_id in self.users:
+            self.users[user_id].pin = pin
+            
+        _LOGGER.debug("User %s PIN updated", user_id)
 
     def _make_http_request(self, url, method="GET", data=None) -> dict:
         """Make HTTP request to Unifi Access API server."""
