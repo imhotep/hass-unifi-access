@@ -11,6 +11,7 @@ import logging
 import ssl
 from threading import Thread
 from typing import Any, Literal, TypedDict, cast
+import unicodedata
 from urllib.parse import urlparse
 
 from requests import request
@@ -35,7 +36,7 @@ from .errors import ApiAuthError, ApiError
 
 _LOGGER = logging.getLogger(__name__)
 
-type EmergencyData = dict[str, bool]
+EmergencyData = dict[str, bool]
 
 
 class DoorLockRule(TypedDict):
@@ -58,6 +59,18 @@ class DoorLockRuleStatus(TypedDict):
 
     type: Literal["schedule", "keep_lock", "keep_unlock", "custom", "lock_early", ""]
     ended_time: int
+
+
+def normalize_door_name(name: str) -> str:
+    """Normalize door name for comparison.
+    
+    This function normalizes Unicode strings to handle special characters
+    like German umlauts (ö, ä, ü) correctly. It converts to NFC (canonical
+    composition) normalization form and strips whitespace.
+    """
+    if not name:
+        return ""
+    return unicodedata.normalize('NFC', name.strip())
 
 
 class UnifiAccessHub:
@@ -133,7 +146,7 @@ class UnifiAccessHub:
                     door_lock_rule = self.get_door_lock_rule(door_id)
                 if door_id in self.doors:
                     existing_door = self.doors[door_id]
-                    existing_door.name = door["name"]
+                    existing_door.name = normalize_door_name(door["name"])
                     existing_door.door_position_status = door["door_position_status"]
                     existing_door.door_lock_relay_status = door[
                         "door_lock_relay_status"
@@ -153,7 +166,7 @@ class UnifiAccessHub:
                 else:
                     self._doors[door_id] = UnifiAccessDoor(
                         door_id=door["id"],
-                        name=door["name"],
+                        name=normalize_door_name(door["name"]),
                         door_position_status=door["door_position_status"],
                         door_lock_relay_status=door["door_lock_relay_status"],
                         door_lock_rule=door_lock_rule["type"],
@@ -383,14 +396,20 @@ class UnifiAccessHub:
                 case "access.remote_view":
                     door_name = update["data"]["door_name"]
                     _LOGGER.debug("access.remote_view %s", door_name)
+                    normalized_door_name = normalize_door_name(door_name)
+                    _LOGGER.debug("Normalized door name from websocket: '%s' -> '%s'", door_name, normalized_door_name)
                     existing_door = next(
                         (
                             door
                             for door in self.doors.values()
-                            if door.name == door_name
+                            if normalize_door_name(door.name) == normalized_door_name
                         ),
                         None,
                     )  # FIXME this is likely unreliable. API does not seem to provide door id forthis access.remote_view  # pylint: disable=fixme
+                    if existing_door is None:
+                        _LOGGER.warning("Could not find door with normalized name '%s'. Available doors: %s", 
+                                        normalized_door_name, 
+                                        [f"'{door.name}' (normalized: '{normalize_door_name(door.name)}')" for door in self.doors.values()])
                     if existing_door is not None:
                         existing_door.doorbell_request_id = update["data"]["request_id"]
                         event = "doorbell_press"
