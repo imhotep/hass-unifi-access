@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime
 import logging
 
+from propcache.api import cached_property
+
 from homeassistant.components.image import ImageEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -38,7 +40,10 @@ async def async_setup_entry(
 class UnifiDoorImageEntity(ImageEntity):
     """Unifi Access Door Image."""
 
-    should_poll = False
+    @cached_property
+    def should_poll(self) -> bool:
+        """Return whether entity should be polled."""
+        return False
 
     _attr_translation_key = "door_thumbnail"
     _attr_has_entity_name = True

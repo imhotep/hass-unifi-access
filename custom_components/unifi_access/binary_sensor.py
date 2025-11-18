@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import logging
 
+from propcache.api import cached_property
+
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
@@ -41,9 +43,13 @@ async def async_setup_entry(
 class UnifiDoorStatusEntity(CoordinatorEntity, BinarySensorEntity):
     """Unifi Access DPS Entity."""
 
-    should_poll = False
     _attr_translation_key = "access_door_dps"
     _attr_has_entity_name = True
+
+    @cached_property
+    def should_poll(self) -> bool:
+        """Return whether entity should be polled."""
+        return False
 
     def __init__(self, coordinator, door_id) -> None:
         """Initialize DPS Entity."""
@@ -89,7 +95,10 @@ class UnifiDoorStatusEntity(CoordinatorEntity, BinarySensorEntity):
 class UnifiDoorbellStatusEntity(CoordinatorEntity, BinarySensorEntity):
     """Unifi Access Doorbell Entity."""
 
-    should_poll = False
+    @cached_property
+    def should_poll(self) -> bool:
+        """Return whether entity should be polled."""
+        return False
 
     def __init__(self, coordinator, door_id) -> None:
         """Initialize Doorbell Entity."""

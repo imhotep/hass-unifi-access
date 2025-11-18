@@ -2,6 +2,8 @@
 
 from datetime import UTC, datetime
 
+from propcache.api import cached_property
+
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -39,7 +41,10 @@ async def async_setup_entry(
 class TemporaryLockRuleSensorEntity(SensorEntity):
     """Unifi Access Temporary Lock Rule Sensor."""
 
-    should_poll = False
+    @cached_property
+    def should_poll(self) -> bool:
+        """Return whether entity should be polled."""
+        return False
 
     _attr_translation_key = "door_lock_rule"
     _attr_has_entity_name = True
@@ -80,7 +85,10 @@ class TemporaryLockRuleSensorEntity(SensorEntity):
 class TemporaryLockRuleEndTimeSensorEntity(SensorEntity):
     """Unifi Access Temporary Lock Rule Sensor End Time."""
 
-    should_poll = False
+    @cached_property
+    def should_poll(self) -> bool:
+        """Return whether entity should be polled."""
+        return False
 
     _attr_translation_key = "door_lock_rule_ended_time"
     _attr_has_entity_name = True

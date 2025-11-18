@@ -138,8 +138,8 @@ class UnifiAccessHub:
                     existing_door.door_lock_relay_status = door[
                         "door_lock_relay_status"
                     ]
-                    existing_door.door_lock_rule = door_lock_rule["type"]
-                    existing_door.door_lock_ended_time = door_lock_rule["ended_time"]
+                    existing_door.lock_rule = door_lock_rule["type"]
+                    existing_door.lock_rule_ended_time = door_lock_rule["ended_time"]
                     _LOGGER.debug(
                         "Updated existing door, id: %s, name: %s, dps: %s, door_lock_relay_status: %s, door lock rule: %s, door lock rule ended time: %s using polling %s",
                         door_id,
@@ -229,9 +229,9 @@ class UnifiAccessHub:
             "PUT",
             door_lock_rule,
         )
-        self.doors[door_id].lock_rule = door_lock_rule["type"]
-        if door_lock_rule["type"] == "custom":
-            self.doors[door_id].interval = door_lock_rule["interval"]
+        # self.doors[door_id].lock_rule = door_lock_rule["type"]
+        # if door_lock_rule["type"] == "custom":
+        #     self.doors[door_id].lock_rule_interval = door_lock_rule["interval"]
 
     def get_doors_emergency_status(self) -> EmergencyData:
         """Get doors emergency status."""
@@ -462,16 +462,19 @@ class UnifiAccessHub:
                         None,
                     )
                     if door is not None:
+                        door_id = door.get("id")
+                        existing_door = self.doors.get(door_id)
                         # Access API 3.4.31 has a bug where the door id is actually the hub id
-                        door_hub_id = door["id"]
-                        existing_door = next(
-                            (
-                                door
-                                for door in self.doors.values()
-                                if getattr(door, "hub_id", None) == door_hub_id
-                            ),
-                            None,
-                        )
+                        if existing_door is None:
+                            door_hub_id = door["id"]
+                            existing_door = next(
+                                (
+                                    door
+                                    for door in self.doors.values()
+                                    if getattr(door, "hub_id", None) == door_hub_id
+                                ),
+                                None,
+                            )
                         if existing_door is not None:
                             _LOGGER.debug(
                                 "access log added for door id %s, hub id %s",
@@ -532,7 +535,7 @@ class UnifiAccessHub:
 
                             # We don't seem to get a message that indicates the end of the doorbell being active
                             # We just toggle the sensor for 2 seconds and return it to its original state
-                            def on_complete(_fut):
+                            async def on_complete(_fut):
                                 existing_door.doorbell_request_id = None
                                 event = "doorbell_press"
                                 event_attributes = {
@@ -540,8 +543,10 @@ class UnifiAccessHub:
                                     "door_id": existing_door.id,
                                     "type": DOORBELL_STOP_EVENT,
                                 }
-                                asyncio.sleep(2)
-                                existing_door.trigger_event(event, event_attributes)
+                                await asyncio.sleep(2)
+                                await existing_door.trigger_event(
+                                    event, event_attributes
+                                )
 
                             event_done_callback = on_complete
                             _LOGGER.info(
@@ -615,7 +620,7 @@ class UnifiAccessHub:
             on_open=self.on_open,
             on_close=self.on_close,
         )
-        sslopt = None
+        sslopt = {"cert_reqs": ssl.CERT_REQUIRED}
         if self.verify_ssl is False:
             sslopt = {"cert_reqs": ssl.CERT_NONE}
         ws.run_forever(sslopt=sslopt, reconnect=5)

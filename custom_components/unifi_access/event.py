@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import logging
 
+from propcache.api import cached_property
+
 from homeassistant.components.event import EventDeviceClass, EventEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -49,9 +51,12 @@ class AccessEventEntity(EventEntity):
     """Authorized User Event Entity."""
 
     _attr_event_types = [ACCESS_ENTRY_EVENT, ACCESS_EXIT_EVENT]
-    _attr_translation_key = "access_event"
     _attr_has_entity_name = True
-    should_poll = False
+
+    @cached_property
+    def should_poll(self) -> bool:
+        """Return whether entity should be polled."""
+        return False
 
     def __init__(self, hass: HomeAssistant, door) -> None:
         """Initialize Unifi Access Door Lock."""
@@ -94,7 +99,11 @@ class DoorbellPressedEventEntity(EventEntity):
     _attr_event_types = [DOORBELL_START_EVENT, DOORBELL_STOP_EVENT]
     _attr_translation_key = "doorbell_event"
     _attr_has_entity_name = True
-    should_poll = False
+
+    @cached_property
+    def should_poll(self) -> bool:
+        """Return whether entity should be polled."""
+        return False
 
     def __init__(self, hass: HomeAssistant, door) -> None:
         """Initialize Unifi Access Doorbell Event."""

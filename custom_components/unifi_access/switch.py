@@ -3,6 +3,8 @@
 import logging
 from typing import Any
 
+from propcache.api import cached_property
+
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -44,7 +46,11 @@ class EvacuationSwitch(CoordinatorEntity, SwitchEntity):
 
     _attr_translation_key = "evacuation"
     _attr_has_entity_name = True
-    should_poll = False
+
+    @cached_property
+    def should_poll(self) -> bool:
+        """Return whether entity should be polled."""
+        return False
 
     def __init__(
         self,
@@ -107,7 +113,11 @@ class LockdownSwitch(CoordinatorEntity, SwitchEntity):
 
     _attr_translation_key = "lockdown"
     _attr_has_entity_name = True
-    should_poll = False
+
+    @cached_property
+    def should_poll(self) -> bool:
+        """Return whether entity should be polled."""
+        return False
 
     def __init__(
         self,
