@@ -8,6 +8,7 @@
 - Unifi Access Hub (UAH) :white_check_mark:
 - Unifi Access Hub (UAH-DOOR) :white_check_mark:
 - Unifi Access Intercom (UA-Intercom) :white_check_mark:
+- Unifi Access G3 Intercom (UA-G3-Intercom) :white_check_mark:
 - Unifi Access Hub Enterprise (UAH-Ent) :white_check_mark:
 - Unifi Gate Hub (UGT) :white_check_mark:
 - Unifi Access Ultra (UA-Ultra) :white_check_mark:

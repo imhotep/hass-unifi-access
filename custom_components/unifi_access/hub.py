@@ -11,6 +11,7 @@ import logging
 import ssl
 from threading import Thread
 from typing import Any, Literal, TypedDict, cast
+import unicodedata
 from urllib.parse import urlparse
 
 from requests import request
@@ -35,7 +36,7 @@ from .errors import ApiAuthError, ApiError
 
 _LOGGER = logging.getLogger(__name__)
 
-type EmergencyData = dict[str, bool]
+EmergencyData = dict[str, bool]
 
 
 class DoorLockRule(TypedDict):
@@ -58,6 +59,18 @@ class DoorLockRuleStatus(TypedDict):
 
     type: Literal["schedule", "keep_lock", "keep_unlock", "custom", "lock_early", ""]
     ended_time: int
+
+
+def normalize_door_name(name: str) -> str:
+    """Normalize door name for comparison.
+    
+    This function normalizes Unicode strings to handle special characters
+    like German umlauts (ö, ä, ü) correctly. It converts to NFC (canonical
+    composition) normalization form and strips whitespace.
+    """
+    if not name:
+        return ""
+    return unicodedata.normalize('NFC', name.strip())
 
 
 class UnifiAccessHub:
@@ -133,13 +146,13 @@ class UnifiAccessHub:
                     door_lock_rule = self.get_door_lock_rule(door_id)
                 if door_id in self.doors:
                     existing_door = self.doors[door_id]
-                    existing_door.name = door["name"]
+                    existing_door.name = normalize_door_name(door["name"])
                     existing_door.door_position_status = door["door_position_status"]
                     existing_door.door_lock_relay_status = door[
                         "door_lock_relay_status"
                     ]
-                    existing_door.door_lock_rule = door_lock_rule["type"]
-                    existing_door.door_lock_ended_time = door_lock_rule["ended_time"]
+                    existing_door.lock_rule = door_lock_rule["type"]
+                    existing_door.lock_rule_ended_time = door_lock_rule["ended_time"]
                     _LOGGER.debug(
                         "Updated existing door, id: %s, name: %s, dps: %s, door_lock_relay_status: %s, door lock rule: %s, door lock rule ended time: %s using polling %s",
                         door_id,
@@ -153,7 +166,7 @@ class UnifiAccessHub:
                 else:
                     self._doors[door_id] = UnifiAccessDoor(
                         door_id=door["id"],
-                        name=door["name"],
+                        name=normalize_door_name(door["name"]),
                         door_position_status=door["door_position_status"],
                         door_lock_relay_status=door["door_lock_relay_status"],
                         door_lock_rule=door_lock_rule["type"],
@@ -229,9 +242,9 @@ class UnifiAccessHub:
             "PUT",
             door_lock_rule,
         )
-        self.doors[door_id].lock_rule = door_lock_rule["type"]
-        if door_lock_rule["type"] == "custom":
-            self.doors[door_id].interval = door_lock_rule["interval"]
+        # self.doors[door_id].lock_rule = door_lock_rule["type"]
+        # if door_lock_rule["type"] == "custom":
+        #     self.doors[door_id].lock_rule_interval = door_lock_rule["interval"]
 
     def get_doors_emergency_status(self) -> EmergencyData:
         """Get doors emergency status."""
@@ -383,14 +396,20 @@ class UnifiAccessHub:
                 case "access.remote_view":
                     door_name = update["data"]["door_name"]
                     _LOGGER.debug("access.remote_view %s", door_name)
+                    normalized_door_name = normalize_door_name(door_name)
+                    _LOGGER.debug("Normalized door name from websocket: '%s' -> '%s'", door_name, normalized_door_name)
                     existing_door = next(
                         (
                             door
                             for door in self.doors.values()
-                            if door.name == door_name
+                            if normalize_door_name(door.name) == normalized_door_name
                         ),
                         None,
                     )  # FIXME this is likely unreliable. API does not seem to provide door id forthis access.remote_view  # pylint: disable=fixme
+                    if existing_door is None:
+                        _LOGGER.warning("Could not find door with normalized name '%s'. Available doors: %s", 
+                                        normalized_door_name, 
+                                        [f"'{door.name}' (normalized: '{normalize_door_name(door.name)}')" for door in self.doors.values()])
                     if existing_door is not None:
                         existing_door.doorbell_request_id = update["data"]["request_id"]
                         event = "doorbell_press"
@@ -462,16 +481,19 @@ class UnifiAccessHub:
                         None,
                     )
                     if door is not None:
+                        door_id = door.get("id")
+                        existing_door = self.doors.get(door_id)
                         # Access API 3.4.31 has a bug where the door id is actually the hub id
-                        door_hub_id = door["id"]
-                        existing_door = next(
-                            (
-                                door
-                                for door in self.doors.values()
-                                if getattr(door, "hub_id", None) == door_hub_id
-                            ),
-                            None,
-                        )
+                        if existing_door is None:
+                            door_hub_id = door["id"]
+                            existing_door = next(
+                                (
+                                    door
+                                    for door in self.doors.values()
+                                    if getattr(door, "hub_id", None) == door_hub_id
+                                ),
+                                None,
+                            )
                         if existing_door is not None:
                             _LOGGER.debug(
                                 "access log added for door id %s, hub id %s",
@@ -532,7 +554,7 @@ class UnifiAccessHub:
 
                             # We don't seem to get a message that indicates the end of the doorbell being active
                             # We just toggle the sensor for 2 seconds and return it to its original state
-                            def on_complete(_fut):
+                            async def on_complete(_fut):
                                 existing_door.doorbell_request_id = None
                                 event = "doorbell_press"
                                 event_attributes = {
@@ -540,8 +562,10 @@ class UnifiAccessHub:
                                     "door_id": existing_door.id,
                                     "type": DOORBELL_STOP_EVENT,
                                 }
-                                asyncio.sleep(2)
-                                existing_door.trigger_event(event, event_attributes)
+                                await asyncio.sleep(2)
+                                await existing_door.trigger_event(
+                                    event, event_attributes
+                                )
 
                             event_done_callback = on_complete
                             _LOGGER.info(
@@ -615,7 +639,7 @@ class UnifiAccessHub:
             on_open=self.on_open,
             on_close=self.on_close,
         )
-        sslopt = None
+        sslopt = {"cert_reqs": ssl.CERT_REQUIRED}
         if self.verify_ssl is False:
             sslopt = {"cert_reqs": ssl.CERT_NONE}
         ws.run_forever(sslopt=sslopt, reconnect=5)

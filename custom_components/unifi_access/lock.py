@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from propcache.api import cached_property
+
 from homeassistant.components.lock import LockEntity, LockEntityFeature
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -35,13 +37,19 @@ async def async_setup_entry(
 class UnifiDoorLockEntity(CoordinatorEntity, LockEntity):
     """Unifi Access Door Lock."""
 
-    should_poll = False
-
-    supported_features = LockEntityFeature.OPEN
-
     _attr_translation_key = "access_door"
     _attr_has_entity_name = True
     _attr_name = None
+
+    @cached_property
+    def supported_features(self) -> LockEntityFeature:
+        """Return supported features."""
+        return LockEntityFeature.OPEN
+
+    @cached_property
+    def should_poll(self) -> bool:
+        """Return whether entity should be polled."""
+        return False
 
     def __init__(self, coordinator, door_id) -> None:
         """Initialize Unifi Access Door Lock."""

@@ -2,6 +2,8 @@
 
 import logging
 
+from propcache.api import cached_property
+
 from homeassistant.components.number import RestoreNumber
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -39,7 +41,11 @@ class TemporaryLockRuleIntervalNumberEntity(RestoreNumber):
 
     _attr_translation_key = "door_lock_rule_interval"
     _attr_has_entity_name = True
-    should_poll = False
+
+    @cached_property
+    def should_poll(self) -> bool:
+        """Return whether entity should be polled."""
+        return False
 
     def __init__(self, door: UnifiAccessDoor) -> None:
         """Initialize Unifi Access Door Lock Rule Interval."""

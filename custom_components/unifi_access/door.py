@@ -1,13 +1,24 @@
 """Unifi Access Door Module."""
 
 from collections.abc import Callable
+from datetime import datetime
 import logging
+from typing import Literal
 
 _LOGGER = logging.getLogger(__name__)
+
+DoorLockRuleType = Literal[
+    "schedule", "keep_lock", "keep_unlock", "custom", "lock_early", ""
+]
 
 
 class UnifiAccessDoor:
     """Unifi Access Door Class."""
+
+    lock_rule: DoorLockRuleType
+    lock_rule_ended_time: int | None
+    lock_rule_interval: int
+    thumbnail_last_updated: datetime | None
 
     def __init__(
         self,
@@ -15,7 +26,7 @@ class UnifiAccessDoor:
         name: str,
         door_position_status: str,
         door_lock_relay_status: str,
-        door_lock_rule: str,
+        door_lock_rule: DoorLockRuleType,
         door_lock_rule_ended_time: int,
         hub,
     ) -> None:

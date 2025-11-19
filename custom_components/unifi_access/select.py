@@ -1,5 +1,7 @@
 """Platform for select integration."""
 
+from propcache.api import cached_property
+
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -37,7 +39,11 @@ class TemporaryLockRuleSelectEntity(CoordinatorEntity, SelectEntity):
 
     _attr_translation_key = "door_lock_rules"
     _attr_has_entity_name = True
-    should_poll = False
+
+    @cached_property
+    def should_poll(self) -> bool:
+        """Return whether entity should be polled."""
+        return False
 
     def __init__(
         self,
