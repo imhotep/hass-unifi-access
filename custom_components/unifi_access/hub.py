@@ -63,14 +63,14 @@ class DoorLockRuleStatus(TypedDict):
 
 def normalize_door_name(name: str) -> str:
     """Normalize door name for comparison.
-    
+
     This function normalizes Unicode strings to handle special characters
     like German umlauts (ö, ä, ü) correctly. It converts to NFC (canonical
     composition) normalization form and strips whitespace.
     """
     if not name:
         return ""
-    return unicodedata.normalize('NFC', name.strip())
+    return unicodedata.normalize("NFC", name.strip())
 
 
 class UnifiAccessHub:
@@ -397,7 +397,11 @@ class UnifiAccessHub:
                     door_name = update["data"]["door_name"]
                     _LOGGER.debug("access.remote_view %s", door_name)
                     normalized_door_name = normalize_door_name(door_name)
-                    _LOGGER.debug("Normalized door name from websocket: '%s' -> '%s'", door_name, normalized_door_name)
+                    _LOGGER.debug(
+                        "Normalized door name from websocket: '%s' -> '%s'",
+                        door_name,
+                        normalized_door_name,
+                    )
                     existing_door = next(
                         (
                             door
@@ -407,9 +411,14 @@ class UnifiAccessHub:
                         None,
                     )  # FIXME this is likely unreliable. API does not seem to provide door id forthis access.remote_view  # pylint: disable=fixme
                     if existing_door is None:
-                        _LOGGER.warning("Could not find door with normalized name '%s'. Available doors: %s", 
-                                        normalized_door_name, 
-                                        [f"'{door.name}' (normalized: '{normalize_door_name(door.name)}')" for door in self.doors.values()])
+                        _LOGGER.warning(
+                            "Could not find door with normalized name '%s'. Available doors: %s",
+                            normalized_door_name,
+                            [
+                                f"'{door.name}' (normalized: '{normalize_door_name(door.name)}')"
+                                for door in self.doors.values()
+                            ],
+                        )
                     if existing_door is not None:
                         existing_door.doorbell_request_id = update["data"]["request_id"]
                         event = "doorbell_press"
@@ -485,12 +494,15 @@ class UnifiAccessHub:
                         existing_door = self.doors.get(door_id)
                         # Access API 3.4.31 has a bug where the door id is actually the hub id
                         if existing_door is None:
-                            door_hub_id = door["id"]
+                            _LOGGER.debug(
+                                "Buggy version of unifi access api detected - looking for door by hub id %s",
+                                door_id,
+                            )
                             existing_door = next(
                                 (
                                     door
                                     for door in self.doors.values()
-                                    if getattr(door, "hub_id", None) == door_hub_id
+                                    if getattr(door, "hub_id", None) == door_id
                                 ),
                                 None,
                             )
