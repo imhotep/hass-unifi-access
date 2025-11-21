@@ -1,12 +1,5 @@
-"""Unifi Access Errors.
+"""Compatibility shim for API errors."""
 
-This module lists Unifi Access API errors.
-"""
+from unifi_access_api.errors import ApiAuthError, ApiError
 
-
-class ApiAuthError(Exception):
-    """Raised when we can't authenticate with the API Token."""
-
-
-class ApiError(Exception):
-    """Raised when we have some trouble using the API."""
+__all__ = ["ApiAuthError", "ApiError"]

@@ -1,8 +1,9 @@
 # Unifi Access Custom Integration for Home Assistant
 
-- This is a basic integration of [Unifi Access](https://ui.com/door-access) in [Home Assistant](https://homeassistant.io). 
-- If you have Unifi Access set up with UID this will likely *NOT* work although some people have reported success using the free version of UID. 
+- This is a basic integration of [Unifi Access](https://ui.com/door-access) in [Home Assistant](https://homeassistant.io).
+- If you have Unifi Access set up with UID this will likely *NOT* work although some people have reported success using the free version of UID.
 - _Camera Feeds are currently not offered by the API and therefore **NOT** supported_.
+- The shared API client lives in the companion [`py-unifi-access`](py-unifi-access) library, which is published separately for reuse.
 
 # Supported hardware
 - Unifi Access Hub (UAH) :white_check_mark:

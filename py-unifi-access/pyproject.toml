@@ -1,0 +1,21 @@
+[project]
+name = "py-unifi-access"
+version = "0.1.0"
+description = "Python client for the Unifi Access local API with websocket event handling"
+authors = [{ name = "imhotep" }]
+license = {text = "Apache-2.0"}
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.31.0",
+    "urllib3>=1.26.0",
+    "websocket-client>=1.9.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/imhotep/py-unifi-access"
+Repository = "https://github.com/imhotep/py-unifi-access"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
