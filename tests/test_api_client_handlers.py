@@ -1,5 +1,8 @@
 import json
 
+import pytest
+
+pytest.importorskip("unifi_access_api")
 from unifi_access_api import UnifiAccessApiClient
 
 

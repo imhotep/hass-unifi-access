@@ -6,10 +6,6 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-LIB_ROOT = ROOT / "py-unifi-access"
-if str(LIB_ROOT) not in sys.path:
-    sys.path.insert(0, str(LIB_ROOT))
-
 
 class _DummyResponse:
     def __init__(self):

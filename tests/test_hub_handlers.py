@@ -2,6 +2,9 @@ import asyncio
 import json
 from threading import Thread
 
+import pytest
+
+pytest.importorskip("unifi_access_api")
 from custom_components.unifi_access.const import DOORBELL_START_EVENT
 from custom_components.unifi_access.hub import UnifiAccessHub
 from unifi_access_api.door import UnifiAccessDoor
