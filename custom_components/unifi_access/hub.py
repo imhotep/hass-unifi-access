@@ -14,6 +14,8 @@ from typing import Any, Literal, TypedDict, cast
 import unicodedata
 from urllib.parse import urlparse
 
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 from requests import request
 from requests.exceptions import ConnectionError as ConnError, SSLError
 import urllib3
@@ -22,6 +24,8 @@ import websocket
 from .const import (
     ACCESS_EVENT,
     DEVICE_NOTIFICATIONS_URL,
+    DEVICES_URL,
+    DOMAIN,
     DOOR_LOCK_RULE_URL,
     DOOR_UNLOCK_URL,
     DOORBELL_START_EVENT,
@@ -85,6 +89,7 @@ class UnifiAccessHub:
         """Initialize."""
         self.use_polling = use_polling
         self.verify_ssl = verify_ssl
+        self.hass: HomeAssistant | None = None
         if self.verify_ssl is False:
             _LOGGER.warning("SSL Verification disabled for %s", host)
             urllib3.disable_warnings()
@@ -127,6 +132,47 @@ class UnifiAccessHub:
         self._api_token = api_token
         self._http_headers["Authorization"] = f"Bearer {self._api_token}"
         self._websocket_headers["Authorization"] = f"Bearer {self._api_token}"
+
+    def _fetch_and_map_devices_to_doors(self):
+        """Fetch devices from API and map hub types to doors."""
+        try:
+            devices_response = self._make_http_request(f"{self.host}{DEVICES_URL}")
+            
+            # API returns nested arrays grouped by hub, flatten them
+            devices = []
+            for device_group in devices_response:
+                if isinstance(device_group, list):
+                    devices.extend(device_group)
+                else:
+                    devices.append(device_group)
+            
+            # Build a map of hub IDs to their types
+            hub_types = {}
+            for device in devices:
+                capabilities = device.get("capabilities", [])
+                if "is_hub" in capabilities or "identity_is_hub" in capabilities:
+                    hub_types[device.get("id")] = device.get("type")
+            
+            # Map doors to their controlling hub
+            for device in devices:
+                location_id = device.get("location_id")
+                if not location_id or location_id not in self.doors:
+                    continue
+                
+                capabilities = device.get("capabilities", [])
+                # If device is itself a hub at this location, use it directly
+                if "is_hub" in capabilities or "identity_is_hub" in capabilities:
+                    self.doors[location_id].hub_type = device.get("type")
+                    self.doors[location_id].hub_id = device.get("id")
+                # Otherwise, use the type of the hub this device is connected to
+                elif device.get("connected_uah_id") in hub_types:
+                    connected_hub_id = device.get("connected_uah_id")
+                    self.doors[location_id].hub_type = hub_types[connected_hub_id]
+                    self.doors[location_id].hub_id = connected_hub_id
+            
+            _LOGGER.debug("Device mapping complete")
+        except (ApiError, ApiAuthError) as e:
+            _LOGGER.warning("Could not fetch devices for hub type mapping: %s", e)
 
     def update(self):
         """Get latest door data."""
@@ -185,6 +231,9 @@ class UnifiAccessHub:
                     )
             else:
                 _LOGGER.debug("Door %s is not bound to a hub. Ignoring", door)
+
+        # Fetch devices and map hub types to doors immediately
+        self._fetch_and_map_devices_to_doors()
 
         if self.update_t is None and self.use_polling is False:
             _LOGGER.debug("Starting continuous updates. Polling disabled")
@@ -458,27 +507,60 @@ class UnifiAccessHub:
                             existing_door.name,
                             doorbell_request_id,
                         )
-                # Currently no way to know via HTTP API which door is associated with which device/hub
-                # Even though we can fetch devices and doors separately, there is no link between them
-                # So we have to rely on websocket messages to link them together
-                case "access.data.device.update":
-                    _LOGGER.debug(
-                        "access.data.device.update: device type %s", update["data"]
-                    )
-                    device_id = update["data"]["unique_id"]
+                # Handle device updates from websocket for real-time changes (v1 and v2 APIs)
+                case "access.data.device.update" | "access.data.v2.device.update":
+                    # Extract fields based on API version
+                    if update["meta"]["message"] == "access.data.device.update":
+                        device_id = update["data"]["unique_id"]
+                        door_id = update["data"].get("door", {}).get("unique_id")
+                        capabilities = update["data"].get("capabilities", [])
+                    else:  # v2 format
+                        device_id = update["data"]["id"]
+                        door_id = update["data"].get("location_id")
+                        capabilities = update["data"].get("cap", [])
+                    
                     device_type = update["data"]["device_type"]
-                    door_id = update["data"].get("door", {}).get("unique_id")
-                    if door_id in self.doors and self.doors[door_id].hub_id is None:
+                    _LOGGER.debug("%s: device type %s", update["meta"]["message"], update["data"])
+                    
+                    if door_id and door_id in self.doors:
                         existing_door = self.doors[door_id]
-                        existing_door.hub_type = device_type
-                        existing_door.hub_id = device_id
-                        _LOGGER.debug(
-                            "Door name %s door id %s is now associated with hub type %s hub id %s",
-                            existing_door.name,
-                            existing_door.id,
-                            existing_door.hub_type,
-                            existing_door.hub_id,
-                        )
+                        
+                        # Only update if this device is a hub, not a reader/keypad
+                        if "is_hub" in capabilities or "identity_is_hub" in capabilities:
+                            existing_door.hub_type = device_type
+                            existing_door.hub_id = device_id
+                            _LOGGER.debug(
+                                "Door name %s door id %s hub type updated to %s hub id %s",
+                                existing_door.name,
+                                existing_door.id,
+                                existing_door.hub_type,
+                                existing_door.hub_id,
+                            )
+                            # Update device registry with correct model
+                            if self.hass:
+                                async def update_device_model():
+                                    device_registry = dr.async_get(self.hass)
+                                    device = device_registry.async_get_device(
+                                        identifiers={(DOMAIN, door_id)}
+                                    )
+                                    if device:
+                                        device_registry.async_update_device(
+                                            device.id, model=device_type
+                                        )
+                                        _LOGGER.debug(
+                                            "Updated device registry: door %s model changed to %s",
+                                            existing_door.name,
+                                            device_type,
+                                        )
+                                asyncio.run_coroutine_threadsafe(
+                                    update_device_model(), self.loop
+                                )
+                        else:
+                            _LOGGER.debug(
+                                "Ignoring device update for reader/keypad %s at door %s - not a hub",
+                                device_type,
+                                existing_door.name,
+                            )
                 case "access.logs.add":
                     _LOGGER.debug("access.logs.add %s", update["data"])
                     door = next(

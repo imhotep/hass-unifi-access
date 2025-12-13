@@ -5,6 +5,7 @@ DOMAIN = "unifi_access"
 # URLs
 UNIFI_ACCESS_API_PORT = 12445
 DOORS_URL = "/api/v1/developer/doors"
+DEVICES_URL = "/api/v1/developer/devices"
 DOOR_UNLOCK_URL = "/api/v1/developer/doors/{door_id}/unlock"
 DOOR_LOCK_RULE_URL = "/api/v1/developer/doors/{door_id}/lock_rule"
 DEVICE_NOTIFICATIONS_URL = "/api/v1/developer/devices/notifications"
@@ -17,3 +18,7 @@ DOORBELL_STOP_EVENT = "unifi_access_doorbell_stop"
 ACCESS_EVENT = "unifi_access_{type}"
 ACCESS_ENTRY_EVENT = "unifi_access_entry"
 ACCESS_EXIT_EVENT = "unifi_access_exit"
+
+# Storage
+STORAGE_KEY = "unifi_access_entity_types"
+STORAGE_VERSION = 1

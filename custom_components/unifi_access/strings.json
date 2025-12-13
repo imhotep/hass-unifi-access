@@ -52,6 +52,11 @@
         "name": "{door_name}"
       }
     },
+    "cover": {
+      "access_cover": {
+        "name": "{door_name}"
+      }
+    },
     "image": {
       "door_thumbnail": {
         "name": "Thumbnail"
@@ -80,6 +85,14 @@
           "reset": "Reset rule",
           "lock_early": "Lock early",
           "lock_now": "Lock now"
+        }
+      },
+      "entity_type": {
+        "name": "Entity Type",
+        "state": {
+          "lock": "Lock (Door)",
+          "garage": "Garage Door",
+          "gate": "Gate"
         }
       }
     }

@@ -39,6 +39,11 @@
                 "name": "{deur_naam}"
             }
         },
+        "cover": {
+            "access_cover": {
+                "name": "{deur_naam}"
+            }
+        },
         "number": {
             "door_lock_rule_interval": {
                 "name": "Regel Interval (min)"
@@ -53,6 +58,14 @@
                     "keep_unlock": "Hou het open",
                     "lock_early": "Sluit vroeg",
                     "reset": "Regel opnieuw instellen"
+                }
+            },
+            "entity_type": {
+                "name": "Entiteitstype",
+                "state": {
+                    "lock": "Slot (Deur)",
+                    "garage": "Garagedeur",
+                    "gate": "Poort"
                 }
             }
         },

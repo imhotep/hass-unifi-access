@@ -39,6 +39,11 @@
                 "name": "{door_name}"
             }
         },
+        "cover": {
+            "access_cover": {
+                "name": "{door_name}"
+            }
+        },
         "number": {
             "door_lock_rule_interval": {
                 "name": "Intervallo della regola (min)"
@@ -53,6 +58,14 @@
                     "keep_unlock": "Tenerlo aperto",
                     "lock_early": "Blocco anticipato",
                     "reset": "Azzeramento della regola"
+                }
+            },
+            "entity_type": {
+                "name": "Tipo di entità",
+                "state": {
+                    "lock": "Serratura (Porta)",
+                    "garage": "Porta del garage",
+                    "gate": "Cancello"
                 }
             }
         },

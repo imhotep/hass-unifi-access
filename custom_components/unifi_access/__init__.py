@@ -8,13 +8,16 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 import homeassistant.helpers.entity_registry as er
+from homeassistant.helpers.storage import Store
 
-from .const import DOMAIN
+from .const import DOMAIN, STORAGE_KEY, STORAGE_VERSION
 from .coordinator import UnifiAccessCoordinator
 from .hub import UnifiAccessHub
+from .door import DoorEntityType
 
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
+    Platform.COVER,
     Platform.EVENT,
     Platform.IMAGE,
     Platform.LOCK,
@@ -47,11 +50,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.data["host"], entry.data["verify_ssl"], entry.data["use_polling"]
     )
     hub.set_api_token(entry.data["api_token"])
+    hub.hass = hass
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = hub
 
     coordinator: UnifiAccessCoordinator = UnifiAccessCoordinator(hass, hub)
 
     await coordinator.async_config_entry_first_refresh()
+    
+    # Set up storage for entity types
+    store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
+    stored_data = await store.async_load() or {}
+    hass.data[DOMAIN]["store"] = store
+    hass.data[DOMAIN]["entity_types"] = stored_data.get("entity_types", {})
+    
+    # Restore entity types from storage
+    for door_id, door in coordinator.data.items():
+        if door_id in hass.data[DOMAIN]["entity_types"]:
+            stored_type = hass.data[DOMAIN]["entity_types"][door_id]
+            door.entity_type = DoorEntityType(stored_type)
+            _LOGGER.debug("Door %s: Restored entity type %s", door.name, stored_type)
 
     hass.data[DOMAIN]["coordinator"] = coordinator
 
