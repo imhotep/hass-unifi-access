@@ -5,8 +5,6 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from propcache.api import cached_property
-
 from homeassistant.components.cover import (
     CoverDeviceClass,
     CoverEntity,
@@ -55,22 +53,14 @@ class UnifiGarageDoorCoverEntity(CoordinatorEntity, CoverEntity):
             return CoverDeviceClass.GATE
         return CoverDeviceClass.GARAGE
 
-    @cached_property
-    def supported_features(self) -> CoverEntityFeature:
-        """Return supported features."""
-        return CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE
-
-    @cached_property
-    def should_poll(self) -> bool:
-        """Return whether entity should be polled."""
-        return False
-
     def __init__(self, coordinator, door_id) -> None:
         """Initialize Unifi Access Garage Door Cover."""
         super().__init__(coordinator, context=door_id)
         self.door: UnifiAccessDoor = self.coordinator.data[door_id]
         self._attr_unique_id = f"{self.door.id}_cover"
         self._attr_translation_placeholders = {"door_name": self.door.name}
+        self._attr_supported_features = CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE
+        self._attr_should_poll = False
 
     @property
     def device_info(self) -> DeviceInfo:

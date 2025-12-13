@@ -507,23 +507,18 @@ class UnifiAccessHub:
                             existing_door.name,
                             doorbell_request_id,
                         )
-                # Handle device updates from websocket for real-time changes (v1 and v2 APIs)
-                case "access.data.device.update" | "access.data.v2.device.update":
-                    # Extract fields based on API version
-                    if update["meta"]["message"] == "access.data.device.update":
-                        device_id = update["data"]["unique_id"]
-                        door_id = update["data"].get("door", {}).get("unique_id")
-                        capabilities = update["data"].get("capabilities", [])
-                    else:  # v2 format
-                        device_id = update["data"]["id"]
-                        door_id = update["data"].get("location_id")
-                        capabilities = update["data"].get("cap", [])
-                    
+                # Handle device updates from websocket for real-time changes
+                case "access.data.device.update":
+                    _LOGGER.debug(
+                        "access.data.device.update: device type %s", update["data"]
+                    )
+                    device_id = update["data"]["unique_id"]
                     device_type = update["data"]["device_type"]
-                    _LOGGER.debug("%s: device type %s", update["meta"]["message"], update["data"])
+                    door_id = update["data"].get("door", {}).get("unique_id")
                     
                     if door_id and door_id in self.doors:
                         existing_door = self.doors[door_id]
+                        capabilities = update["data"].get("capabilities", [])
                         
                         # Only update if this device is a hub, not a reader/keypad
                         if "is_hub" in capabilities or "identity_is_hub" in capabilities:
