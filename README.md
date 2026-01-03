@@ -15,7 +15,8 @@
 - Unifi Access Door Mini (UA-Hub-Door-Mini) :white_check_mark:
 
 # Getting Unifi Access API Token
-- Log in to Unifi Access and Click on Security -> Advanced -> API Token
+- Log in to Unifi and make sure you have selected the access tab from the top menu. 
+- Now choose Settings (Gear Icon) -> General (Scroll to bottom) -> API Token.
 - Create a new token and pick all permissions (this is *IMPORTANT*). At the very least pick: Space, Device and System Log.
 
 # Installation (HACS)
