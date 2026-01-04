@@ -15,7 +15,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
-from .door import UnifiAccessDoor
+from .door import UnifiAccessDoor, DoorEntityType
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,8 +29,11 @@ async def async_setup_entry(
 
     coordinator = hass.data[DOMAIN]["coordinator"]
 
+    # Only create lock entities for doors configured as locks
     async_add_entities(
-        UnifiDoorLockEntity(coordinator, key) for key in coordinator.data
+        UnifiDoorLockEntity(coordinator, key)
+        for key in coordinator.data
+        if coordinator.data[key].entity_type == DoorEntityType.LOCK
     )
 
 

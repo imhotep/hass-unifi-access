@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 from datetime import datetime
+from enum import Enum
 import logging
 from typing import Literal
 
@@ -10,6 +11,14 @@ _LOGGER = logging.getLogger(__name__)
 DoorLockRuleType = Literal[
     "schedule", "keep_lock", "keep_unlock", "custom", "lock_early", ""
 ]
+
+
+class DoorEntityType(str, Enum):
+    """Door entity type options."""
+    
+    LOCK = "lock"
+    GARAGE = "garage"
+    GATE = "gate"
 
 
 class UnifiAccessDoor:
@@ -41,6 +50,7 @@ class UnifiAccessDoor:
         self._hub = hub
         self.hub_type = "UAH"
         self.hub_id = None
+        self.entity_type = DoorEntityType.LOCK
         self._id = door_id
         self.name = name
         self.door_position_status = door_position_status

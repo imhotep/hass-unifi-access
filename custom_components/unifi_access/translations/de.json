@@ -39,6 +39,11 @@
                 "name": "{door_name}"
             }
         },
+        "cover": {
+            "access_cover": {
+                "name": "{door_name}"
+            }
+        },
         "number": {
             "door_lock_rule_interval": {
                 "name": "Regel-Intervall (min)"
@@ -53,6 +58,14 @@
                     "keep_unlock": "Aufgeschlossen halten",
                     "lock_early": "Frühzeitig abschließen",
                     "reset": "Regel zurücksetzten"
+                }
+            },
+            "entity_type": {
+                "name": "Entitätstyp",
+                "state": {
+                    "lock": "Schloss (Tür)",
+                    "garage": "Garagentor",
+                    "gate": "Tor"
                 }
             }
         },
