@@ -36,7 +36,7 @@
         },
         "lock": {
             "access_door": {
-                "name": "{deur_naam}"
+                "name": "{door_name}"
             }
         },
         "number": {
