@@ -7,6 +7,7 @@ import asyncio
 from datetime import timedelta
 import logging
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -19,7 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 class UnifiAccessCoordinator(DataUpdateCoordinator):
     """Unifi Access Coordinator. This is mostly used for local polling."""
 
-    def __init__(self, hass: HomeAssistant, hub) -> None:
+    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, hub) -> None:
         """Initialize Unifi Access Coordinator."""
         update_interval = timedelta(seconds=3) if hub.use_polling is True else None
 
@@ -27,6 +28,7 @@ class UnifiAccessCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             name="Unifi Access Coordinator",
+            config_entry=config_entry,
             always_update=True,
             update_interval=update_interval,
         )
@@ -46,7 +48,7 @@ class UnifiAccessCoordinator(DataUpdateCoordinator):
 class UnifiAccessEvacuationAndLockdownSwitchCoordinator(DataUpdateCoordinator):
     """Unifi Access Switch Coordinator."""
 
-    def __init__(self, hass: HomeAssistant, hub) -> None:
+    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, hub) -> None:
         """Initialize Unifi Access Switch Coordinator."""
         update_interval = timedelta(seconds=3) if hub.use_polling is True else None
 
@@ -54,6 +56,7 @@ class UnifiAccessEvacuationAndLockdownSwitchCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             name="Unifi Access Evacuation and Lockdown Switch Coordinator",
+            config_entry=config_entry,
             update_interval=update_interval,
         )
         self.hub = hub

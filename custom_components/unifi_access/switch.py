@@ -28,7 +28,7 @@ async def async_setup_entry(
     hub: UnifiAccessHub = hass.data[DOMAIN][config_entry.entry_id]
 
     coordinator: UnifiAccessEvacuationAndLockdownSwitchCoordinator = (
-        UnifiAccessEvacuationAndLockdownSwitchCoordinator(hass, hub)
+        UnifiAccessEvacuationAndLockdownSwitchCoordinator(hass, config_entry, hub)
     )
 
     await coordinator.async_config_entry_first_refresh()

@@ -1,14 +1,7 @@
 {
   "config": {
-    "step": {
-      "user": {
-        "data": {
-          "host": "[%key:common::config_flow::data::host%]",
-          "api_token": "[%key:common::config_flow::data::api_token%]",
-          "verify_ssl": "[%key:common::config_flow::data::verify_ssl%]",
-          "use_polling": "Use polling"
-        }
-      }
+    "abort": {
+      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
     },
     "error": {
       "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
@@ -16,11 +9,23 @@
       "ssl_error": "Error validating SSL certificate",
       "unknown": "[%key:common::config_flow::error::unknown%]"
     },
-    "abort": {
-      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
+    "step": {
+      "user": {
+        "data": {
+          "api_token": "[%key:common::config_flow::data::api_token%]",
+          "host": "[%key:common::config_flow::data::host%]",
+          "use_polling": "Use polling",
+          "verify_ssl": "[%key:common::config_flow::data::verify_ssl%]"
+        }
+      }
     }
   },
   "entity": {
+    "binary_sensor": {
+      "access_door_dps": {
+        "name": "Door Position Sensor"
+      }
+    },
     "event": {
       "access_event": {
         "name": "Access"
@@ -29,22 +34,9 @@
         "name": "Doorbell Press"
       }
     },
-    "sensor": {
-      "door_lock_rule": {
-        "name": "Door Lock Rule",
-        "state": {
-          "keep_lock": "Locked",
-          "keep_unlock": "Unlocked",
-          "custom": "Custom"
-        }
-      },
-      "door_lock_rule_ended_time": {
-        "name": "Rule End Time"
-      }
-    },
-    "number": {
-      "door_lock_rule_interval": {
-        "name": "Rule Interval (min)"
+    "image": {
+      "door_thumbnail": {
+        "name": "Thumbnail"
       }
     },
     "lock": {
@@ -52,14 +44,35 @@
         "name": "{door_name}"
       }
     },
-    "image": {
-      "door_thumbnail": {
-        "name": "Thumbnail"
+    "number": {
+      "door_lock_rule_interval": {
+        "name": "Rule Interval (min)"
       }
     },
-    "binary_sensor": {
-      "access_door_dps": {
-        "name": "Door Position Sensor"
+    "select": {
+      "door_lock_rules": {
+        "name": "Door Lock Rule",
+        "state": {
+          "custom": "Custom (set interval)",
+          "keep_lock": "Keep it locked",
+          "keep_unlock": "Keep it unlocked",
+          "lock_early": "Lock early",
+          "lock_now": "Lock now",
+          "reset": "Reset rule"
+        }
+      }
+    },
+    "sensor": {
+      "door_lock_rule": {
+        "name": "Door Lock Rule",
+        "state": {
+          "custom": "Custom",
+          "keep_lock": "Locked",
+          "keep_unlock": "Unlocked"
+        }
+      },
+      "door_lock_rule_ended_time": {
+        "name": "Rule End Time"
       }
     },
     "switch": {
@@ -68,19 +81,6 @@
       },
       "lockdown": {
         "name": "Lockdown"
-      }
-    },
-    "select": {
-      "door_lock_rules": {
-        "name": "Door Lock Rule",
-        "state": {
-          "keep_lock": "Keep it locked",
-          "keep_unlock": "Keep it unlocked",
-          "custom": "Custom (set interval)",
-          "reset": "Reset rule",
-          "lock_early": "Lock early",
-          "lock_now": "Lock now"
-        }
       }
     }
   }
