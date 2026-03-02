@@ -15,8 +15,7 @@
 - Unifi Access Door Mini (UA-Hub-Door-Mini) :white_check_mark:
 
 # Getting Unifi Access API Token
-- Log in to Unifi and make sure you have selected the access tab from the top menu. 
-- Now choose Settings (Gear Icon) -> General (Scroll to bottom) -> API Token.
+- Go to http(s)://{unifi_access_console}/access/settings/system
 - Create a new token and pick all permissions (this is *IMPORTANT*). At the very least pick: Space, Device and System Log.
 
 # Installation (HACS)
@@ -109,6 +108,12 @@ The Unifi Access API does *NOT* support door locking at the moment. You probably
 
 # Wishlist
 - door code via service
+
+# Troubleshooting
+
+## Invalid API Key 
+
+You have likely created a Unifi Protect token and you need to create a Unifi Access token
 
 Please create an issue if you have a feature request and pull requests are always welcome!
 

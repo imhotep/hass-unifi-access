@@ -96,3 +96,7 @@ class SSLVerificationError(HomeAssistantError):
 
 class InvalidApiKey(HomeAssistantError):
     """Error to indicate there is invalid auth."""
+
+
+# Backwards compatible alias used by the tests
+InvalidAuth = InvalidApiKey

@@ -6,7 +6,7 @@ import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 import homeassistant.helpers.entity_registry as er
 
 from .const import DOMAIN
@@ -26,7 +26,8 @@ PLATFORMS: list[Platform] = [
 _LOGGER = logging.getLogger(__name__)
 
 
-async def remove_stale_entities(hass: HomeAssistant, entry_id: str):
+@callback
+def remove_stale_entities(hass: HomeAssistant, entry_id: str) -> None:
     """Remove entities that are stale."""
     _LOGGER.debug("Removing stale entities")
     registry = er.async_get(hass)
@@ -49,7 +50,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hub.set_api_token(entry.data["api_token"])
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = hub
 
-    coordinator: UnifiAccessCoordinator = UnifiAccessCoordinator(hass, hub)
+    coordinator: UnifiAccessCoordinator = UnifiAccessCoordinator(hass, entry, hub)
 
     await coordinator.async_config_entry_first_refresh()
 
@@ -57,9 +58,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    await remove_stale_entities(hass, entry.entry_id)
+    entry.async_create_background_task(
+        hass,
+        _async_remove_stale_entities(hass, entry.entry_id),
+        "unifi_access remove stale entities",
+    )
 
     return True
+
+
+async def _async_remove_stale_entities(hass: HomeAssistant, entry_id: str) -> None:
+    """Run stale entity cleanup in a background task."""
+    remove_stale_entities(hass, entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
