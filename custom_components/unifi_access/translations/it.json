@@ -24,6 +24,9 @@
         "binary_sensor": {
             "access_door_dps": {
                 "name": "Sensore di posizione della porta"
+            },
+            "doorbell_status": {
+                "name": "Campanello"
             }
         },
         "event": {

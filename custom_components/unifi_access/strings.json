@@ -16,6 +16,12 @@
           "host": "[%key:common::config_flow::data::host%]",
           "use_polling": "Use polling",
           "verify_ssl": "[%key:common::config_flow::data::verify_ssl%]"
+        },
+        "data_description": {
+          "host": "Hostname or IP address of the UniFi Access controller",
+          "api_token": "API token generated in the UniFi Access settings",
+          "verify_ssl": "Verify the SSL certificate of the controller",
+          "use_polling": "Use polling instead of websocket push updates"
         }
       }
     }
@@ -24,6 +30,9 @@
     "binary_sensor": {
       "access_door_dps": {
         "name": "Door Position Sensor"
+      },
+      "doorbell_status": {
+        "name": "Doorbell"
       }
     },
     "event": {

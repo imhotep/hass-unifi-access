@@ -1,56 +1,43 @@
 """Platform for number (interval) integration."""
 
-import logging
-
-from propcache.api import cached_property
-
 from homeassistant.components.number import RestoreNumber
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
+from . import UnifiAccessConfigEntry
 from .const import DOMAIN
-from .door import UnifiAccessDoor
-from .hub import UnifiAccessHub
-
-_LOGGER = logging.getLogger(__name__)
+from .hub import DoorState
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    config_entry: UnifiAccessConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Add number entity for passed config entry."""
-    hub: UnifiAccessHub = hass.data[DOMAIN][config_entry.entry_id]
+    data = config_entry.runtime_data
 
-    coordinator = hass.data[DOMAIN]["coordinator"]
-
-    if hub.supports_door_lock_rules:
+    if data.hub.supports_door_lock_rules:
         async_add_entities(
             [
                 TemporaryLockRuleIntervalNumberEntity(door)
-                for door in coordinator.data.values()
+                for door in data.coordinator.data.values()
             ]
         )
 
 
 class TemporaryLockRuleIntervalNumberEntity(RestoreNumber):
-    """Unifi Access Temporary Lock Rule Interval Interval."""
+    """Unifi Access Temporary Lock Rule Interval."""
 
-    _attr_translation_key = "door_lock_rule_interval"
     _attr_has_entity_name = True
+    _attr_should_poll = False
+    _attr_translation_key = "door_lock_rule_interval"
 
-    @cached_property
-    def should_poll(self) -> bool:
-        """Return whether entity should be polled."""
-        return False
-
-    def __init__(self, door: UnifiAccessDoor) -> None:
+    def __init__(self, door: DoorState) -> None:
         """Initialize Unifi Access Door Lock Rule Interval."""
         super().__init__()
-        self.door: UnifiAccessDoor = door
+        self.door = door
         self._attr_unique_id = f"door_lock_rule_interval_{self.door.id}"
         self._attr_native_value = 10
         self._attr_native_min_value = 1
@@ -74,6 +61,6 @@ class TemporaryLockRuleIntervalNumberEntity(RestoreNumber):
             self.door.lock_rule_interval = int(self.native_value)
 
     def set_native_value(self, value: float) -> None:
-        "Select Door Lock Rule Interval (in minutes)."
+        """Select Door Lock Rule Interval (in minutes)."""
         self._attr_native_value = value
         self.door.lock_rule_interval = int(value)

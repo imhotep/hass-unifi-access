@@ -24,6 +24,9 @@
         "binary_sensor": {
             "access_door_dps": {
                 "name": "门位置传感器"
+            },
+            "doorbell_status": {
+                "name": "门铃"
             }
         },
         "event": {

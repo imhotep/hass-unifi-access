@@ -10,9 +10,16 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+
+from unifi_access_api import (
+    ApiAuthError,
+    ApiConnectionError,
+    ApiSSLError,
+    UnifiAccessApiClient,
+)
 
 from .const import DOMAIN
-from .hub import UnifiAccessHub
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,37 +27,30 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required("host"): str,
         vol.Required("api_token"): str,
-        vol.Required("verify_ssl"): bool,
-        vol.Required("use_polling"): bool,
+        vol.Required("verify_ssl", default=False): bool,
+        vol.Required("use_polling", default=False): bool,
     }
 )
 
 
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
-    """Validate the user input allows us to connect.
-
-    Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
-    """
-
-    api = UnifiAccessHub(data["host"], data["verify_ssl"], data["use_polling"])
-
-    auth_response = await hass.async_add_executor_job(
-        api.authenticate, data["api_token"]
+    """Validate the user input allows us to connect."""
+    session = async_get_clientsession(hass, verify_ssl=data["verify_ssl"])
+    client = UnifiAccessApiClient(
+        host=data["host"],
+        api_token=data["api_token"],
+        session=session,
+        verify_ssl=data["verify_ssl"],
     )
+    try:
+        await client.authenticate()
+    except ApiAuthError as err:
+        raise InvalidApiKey from err
+    except ApiSSLError as err:
+        raise SSLVerificationError from err
+    except ApiConnectionError as err:
+        raise CannotConnect from err
 
-    match auth_response:
-        case "cannot_connect":
-            raise CannotConnect
-        case "api_error":
-            raise CannotConnect
-        case "api_auth_error":
-            raise InvalidApiKey
-        case "ssl_error":
-            raise SSLVerificationError
-        case "ok":
-            _LOGGER.info("Unifi Access API authorized")
-
-    # Return info that you want to store in the config entry.
     return {"title": "Unifi Access Doors"}
 
 
@@ -65,6 +65,8 @@ class UnifiAccessConfigFlow(ConfigFlow, domain=DOMAIN):
         """Handle the initial step."""
         errors: dict[str, str] = {}
         if user_input is not None:
+            await self.async_set_unique_id(user_input["host"])
+            self._abort_if_unique_id_configured()
             try:
                 info = await validate_input(self.hass, user_input)
             except CannotConnect:
@@ -73,7 +75,7 @@ class UnifiAccessConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors["base"] = "invalid_api_key"
             except SSLVerificationError:
                 errors["base"] = "ssl_error"
-            except Exception:  # pylint: disable=broad-except
+            except Exception:
                 _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
             else:

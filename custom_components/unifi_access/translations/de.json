@@ -24,6 +24,9 @@
         "binary_sensor": {
             "access_door_dps": {
                 "name": "Türpositionssensor"
+            },
+            "doorbell_status": {
+                "name": "Türklingel"
             }
         },
         "event": {

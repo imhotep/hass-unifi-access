@@ -1,73 +1,76 @@
-"""Unifi Access Coordinator.
-
-This module has the Unifi Access Coordinator to be used by entities.
-"""
+"""Unifi Access Coordinator."""
 
 import asyncio
-from datetime import timedelta
 import logging
+from datetime import timedelta
+
+from unifi_access_api import ApiAuthError, ApiError
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .errors import ApiAuthError, ApiError
+from .hub import UnifiAccessHub
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class UnifiAccessCoordinator(DataUpdateCoordinator):
-    """Unifi Access Coordinator. This is mostly used for local polling."""
+    """Unifi Access Coordinator. Used for local polling and WS push."""
 
-    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, hub) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        config_entry: ConfigEntry,
+        hub: UnifiAccessHub,
+    ) -> None:
         """Initialize Unifi Access Coordinator."""
-        update_interval = timedelta(seconds=3) if hub.use_polling is True else None
-
+        self.hub = hub
         super().__init__(
             hass,
             _LOGGER,
             name="Unifi Access Coordinator",
             config_entry=config_entry,
             always_update=True,
-            update_interval=update_interval,
+            update_interval=timedelta(seconds=3) if hub.use_polling else None,
         )
-        self.hub = hub
 
     async def _async_update_data(self):
-        """Handle Unifi Access Coordinator updates."""
+        """Fetch door data from the API."""
         try:
             async with asyncio.timeout(10):
-                return await self.hass.async_add_executor_job(self.hub.update)
+                return await self.hub.async_update()
         except ApiAuthError as err:
             raise ConfigEntryAuthFailed from err
         except ApiError as err:
             raise UpdateFailed("Error communicating with API") from err
 
 
-class UnifiAccessEvacuationAndLockdownSwitchCoordinator(DataUpdateCoordinator):
-    """Unifi Access Switch Coordinator."""
+class UnifiAccessEmergencyCoordinator(DataUpdateCoordinator):
+    """Unifi Access Emergency (evacuation/lockdown) Coordinator."""
 
-    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, hub) -> None:
-        """Initialize Unifi Access Switch Coordinator."""
-        update_interval = timedelta(seconds=3) if hub.use_polling is True else None
-
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        config_entry: ConfigEntry,
+        hub: UnifiAccessHub,
+    ) -> None:
+        """Initialize Unifi Access Emergency Coordinator."""
+        self.hub = hub
         super().__init__(
             hass,
             _LOGGER,
-            name="Unifi Access Evacuation and Lockdown Switch Coordinator",
+            name="Unifi Access Emergency Coordinator",
             config_entry=config_entry,
-            update_interval=update_interval,
+            update_interval=timedelta(seconds=3) if hub.use_polling else None,
         )
-        self.hub = hub
 
     async def _async_update_data(self):
-        """Handle Unifi Access Switch Coordinator updates."""
+        """Fetch emergency status from the API."""
         try:
             async with asyncio.timeout(10):
-                return await self.hass.async_add_executor_job(
-                    self.hub.get_doors_emergency_status
-                )
+                return await self.hub.async_get_emergency_status()
         except ApiAuthError as err:
             raise ConfigEntryAuthFailed from err
         except ApiError as err:

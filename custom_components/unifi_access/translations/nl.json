@@ -24,6 +24,9 @@
         "binary_sensor": {
             "access_door_dps": {
                 "name": "Deur Positie Sensor"
+            },
+            "doorbell_status": {
+                "name": "Deurbel"
             }
         },
         "event": {
