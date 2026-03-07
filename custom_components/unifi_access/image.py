@@ -1,79 +1,50 @@
-"""Platform for sensor integration."""
+"""Platform for image integration."""
 
 from __future__ import annotations
 
 from datetime import datetime
-import logging
-
-from propcache.api import cached_property
 
 from homeassistant.components.image import ImageEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .const import DOMAIN
-from .door import UnifiAccessDoor
-from .hub import UnifiAccessHub
+from . import UnifiAccessConfigEntry
+from .coordinator import UnifiAccessCoordinator
+from .entity import UnifiAccessDoorEntity
+from .hub import DoorState
 
-_LOGGER = logging.getLogger(__name__)
+PARALLEL_UPDATES = 0
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    config_entry: UnifiAccessConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Add image entity for passed config entry."""
+    data = config_entry.runtime_data
+    verify_ssl = config_entry.data["verify_ssl"]
 
-    coordinator = hass.data[DOMAIN]["coordinator"]
-    verify_ssl = config_entry.options.get("verify_ssl", False)
-    hub: UnifiAccessHub = hass.data[DOMAIN][config_entry.entry_id]
-    if hub.use_polling is False:
+    if not data.hub.use_polling:
         async_add_entities(
-            UnifiDoorImageEntity(hass, verify_ssl, door, config_entry.data["api_token"])
-            for door in coordinator.data.values()
+            UnifiDoorImageEntity(data.coordinator, hass, verify_ssl, door)
+            for door in data.coordinator.data.values()
         )
 
 
-class UnifiDoorImageEntity(ImageEntity):
+class UnifiDoorImageEntity(UnifiAccessDoorEntity, ImageEntity):
     """Unifi Access Door Image."""
 
-    @cached_property
-    def should_poll(self) -> bool:
-        """Return whether entity should be polled."""
-        return False
-
     _attr_translation_key = "door_thumbnail"
-    _attr_has_entity_name = True
 
-    def __init__(self, hass: HomeAssistant, verify_ssl: bool, door, api_token) -> None:
+    def __init__(
+        self, coordinator: UnifiAccessCoordinator[dict[str, DoorState]], hass: HomeAssistant, verify_ssl: bool, door: DoorState
+    ) -> None:
         """Initialize Unifi Access Door Image."""
-        super().__init__(hass, verify_ssl)
-        self.door: UnifiAccessDoor = door
+        UnifiAccessDoorEntity.__init__(self, coordinator, door)
+        ImageEntity.__init__(self, hass, verify_ssl)
         self._attr_unique_id = self.door.id
         self._attr_translation_placeholders = {"door_name": self.door.name}
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Get Unifi Access Door Image device information."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, self.door.id)},
-            name=self.door.name,
-            model=self.door.hub_type,
-            manufacturer="Unifi",
-        )
-
-    async def async_added_to_hass(self) -> None:
-        """Add Unifi Access Door Image to Home Assistant."""
-        await super().async_added_to_hass()
-        self.door.register_callback(self.async_write_ha_state)
-
-    async def async_will_remove_from_hass(self) -> None:
-        """Remove Unifi Access Door Image from Home Assistant."""
-        await super().async_will_remove_from_hass()
-        self.door.remove_callback(self.async_write_ha_state)
 
     @property
     def image_last_updated(self) -> datetime | None:

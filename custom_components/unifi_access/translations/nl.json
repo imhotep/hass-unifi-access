@@ -1,7 +1,9 @@
 {
     "config": {
         "abort": {
-            "already_configured": "Toestel is reeds geconfigureerd"
+            "already_configured": "Toestel is reeds geconfigureerd",
+            "reauth_successful": "Herauthenticatie is geslaagd",
+            "reconfigure_successful": "Herconfiguratie is geslaagd"
         },
         "error": {
             "cannot_connect": "Verbinding lukt niet",
@@ -13,9 +15,36 @@
             "user": {
                 "data": {
                     "api_token": "API token",
-                    "host": "Gast",
+                    "host": "Host",
                     "use_polling": "Gebruik polling",
                     "verify_ssl": "Controleer SSL certificaat"
+                },
+                "data_description": {
+                    "host": "Hostnaam of IP-adres van de UniFi Access controller",
+                    "api_token": "API token gegenereerd in de UniFi Access instellingen",
+                    "verify_ssl": "Controleer het SSL certificaat van de controller",
+                    "use_polling": "Gebruik polling in plaats van websocket push-updates"
+                }
+            },
+            "reauth_confirm": {
+                "title": "UniFi Access opnieuw authenticeren",
+                "description": "Het API token voor {host} is niet meer geldig. Voer een nieuw API token in.",
+                "data": {
+                    "api_token": "API token"
+                }
+            },
+            "reconfigure": {
+                "data": {
+                    "api_token": "API token",
+                    "host": "Host",
+                    "use_polling": "Gebruik polling",
+                    "verify_ssl": "Controleer SSL certificaat"
+                },
+                "data_description": {
+                    "host": "Hostnaam of IP-adres van de UniFi Access controller",
+                    "api_token": "API token gegenereerd in de UniFi Access instellingen",
+                    "verify_ssl": "Controleer het SSL certificaat van de controller",
+                    "use_polling": "Gebruik polling in plaats van websocket push-updates"
                 }
             }
         }
@@ -24,6 +53,9 @@
         "binary_sensor": {
             "access_door_dps": {
                 "name": "Deur Positie Sensor"
+            },
+            "doorbell_status": {
+                "name": "Deurbel"
             }
         },
         "event": {
@@ -32,6 +64,11 @@
             },
             "doorbell_event": {
                 "name": "Deurbel Drukken"
+            }
+        },
+        "image": {
+            "door_thumbnail": {
+                "name": "Miniatuur"
             }
         },
         "lock": {
@@ -52,6 +89,7 @@
                     "keep_lock": "Hou het gesloten",
                     "keep_unlock": "Hou het open",
                     "lock_early": "Sluit vroeg",
+                    "lock_now": "Nu sluiten",
                     "reset": "Regel opnieuw instellen"
                 }
             }

@@ -1,87 +1,51 @@
 """Platform for select integration."""
 
-from propcache.api import cached_property
-
 from homeassistant.components.select import SelectEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
-from .coordinator import UnifiAccessCoordinator
-from .door import UnifiAccessDoor
-from .hub import UnifiAccessHub
+from . import UnifiAccessConfigEntry, UnifiAccessData
+from .entity import UnifiAccessDoorEntity
+
+PARALLEL_UPDATES = 1
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    config_entry: UnifiAccessConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Add select entity for passed config entry."""
-    hub: UnifiAccessHub = hass.data[DOMAIN][config_entry.entry_id]
+    data = config_entry.runtime_data
 
-    coordinator = hass.data[DOMAIN]["coordinator"]
-
-    if hub.supports_door_lock_rules:
+    if data.hub.supports_door_lock_rules:
         async_add_entities(
             [
-                TemporaryLockRuleSelectEntity(coordinator, door_id)
-                for door_id in coordinator.data
+                TemporaryLockRuleSelectEntity(data, door_id)
+                for door_id in data.coordinator.data
             ]
         )
 
 
-class TemporaryLockRuleSelectEntity(CoordinatorEntity, SelectEntity):
+class TemporaryLockRuleSelectEntity(UnifiAccessDoorEntity, SelectEntity):
     """Unifi Access Temporary Lock Rule Select."""
 
     _attr_translation_key = "door_lock_rules"
-    _attr_has_entity_name = True
 
-    @cached_property
-    def should_poll(self) -> bool:
-        """Return whether entity should be polled."""
-        return False
-
-    def __init__(
-        self,
-        coordinator: UnifiAccessCoordinator,
-        door_id: str,
-    ) -> None:
+    def __init__(self, data: UnifiAccessData, door_id: str) -> None:
         """Initialize Unifi Access Door Lock Rule."""
-        super().__init__(coordinator, context="lock_rule")
-        self.door: UnifiAccessDoor = self.coordinator.data[door_id]
+        super().__init__(data.coordinator, data.coordinator.data[door_id])
+        self._data = data
         self._attr_unique_id = f"door_lock_rule_{door_id}"
-        self._attr_options = [
-            "",
-            "keep_lock",
-            "keep_unlock",
-            "custom",
-            "reset",
-            "lock_early",
-            "lock_now",
-        ]
         self._update_options()
 
     @property
-    def device_info(self) -> DeviceInfo:
-        """Get Unifi Access Door Lock device information."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, self.door.id)},
-            name=self.door.name,
-            model=self.door.hub_type,
-            manufacturer="Unifi",
-        )
-
-    @property
     def current_option(self) -> str:
-        "Get current option."
+        """Get current option."""
         return self.door.lock_rule
 
-    def _update_options(self):
-        "Update Door Lock Rules without duplications."
+    def _update_options(self) -> None:
+        """Update Door Lock Rules without duplications."""
         self._attr_current_option = self.coordinator.data[self.door.id].lock_rule
 
         base_options = [
@@ -98,18 +62,10 @@ class TemporaryLockRuleSelectEntity(CoordinatorEntity, SelectEntity):
         self._attr_options = base_options
 
     async def async_select_option(self, option: str) -> None:
-        "Select Door Lock Rule."
-        await self.hass.async_add_executor_job(self.door.set_lock_rule, option)
-
-    async def async_added_to_hass(self) -> None:
-        """Add Unifi Access Door Rule Lock Select to Home Assistant."""
-        await super().async_added_to_hass()
-        self.door.register_callback(self.async_write_ha_state)
-
-    async def async_will_remove_from_hass(self) -> None:
-        """Remove Unifi Access Rule Lock Select from Home Assistant."""
-        await super().async_will_remove_from_hass()
-        self.door.remove_callback(self.async_write_ha_state)
+        """Select Door Lock Rule."""
+        if not option:
+            return
+        await self._data.hub.async_set_lock_rule(self.door.id, option)
 
     def _handle_coordinator_update(self) -> None:
         """Handle Unifi Access Door Lock updates from coordinator."""

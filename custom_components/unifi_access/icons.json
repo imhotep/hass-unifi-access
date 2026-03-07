@@ -1,0 +1,51 @@
+{
+  "entity": {
+    "binary_sensor": {
+      "access_door_dps": {
+        "default": "mdi:door"
+      },
+      "doorbell_status": {
+        "default": "mdi:doorbell"
+      }
+    },
+    "event": {
+      "access_event": {
+        "default": "mdi:door-open"
+      },
+      "doorbell_event": {
+        "default": "mdi:doorbell-video"
+      }
+    },
+    "image": {
+      "door_thumbnail": {
+        "default": "mdi:image"
+      }
+    },
+    "number": {
+      "door_lock_rule_interval": {
+        "default": "mdi:timer-outline"
+      }
+    },
+    "select": {
+      "door_lock_rules": {
+        "default": "mdi:lock-clock"
+      }
+    },
+    "sensor": {
+      "door_lock_rule": {
+        "default": "mdi:lock-alert"
+      },
+      "door_lock_rule_ended_time": {
+        "default": "mdi:clock-end"
+      }
+    },
+    "switch": {
+      "evacuation": {
+        "default": "mdi:exit-run"
+      },
+      "lockdown": {
+        "default": "mdi:lock-alert-outline"
+      }
+    }
+  }
+}

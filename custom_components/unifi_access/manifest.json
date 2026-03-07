@@ -4,8 +4,9 @@
   "codeowners": ["@imhotep"],
   "config_flow": true,
   "documentation": "https://github.com/imhotep/hass-unifi-access/blob/main/README.md",
+  "homeassistant": "2025.2.0",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/imhotep/hass-unifi-access/issues",
-  "requirements": ["py-unifi-access==0.1.0"],
-  "version": "2.0.0"
+  "requirements": ["py-unifi-access==0.2.0"],
+  "version": "3.0.0"
 }
