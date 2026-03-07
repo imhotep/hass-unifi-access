@@ -2,24 +2,23 @@
 
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from unifi_access_api import (
-    ApiError,
-    Door,
+    ApiNotFoundError,
     DoorLockRelayStatus,
-    DoorLockRuleStatus,
     DoorLockRuleType,
     DoorPositionStatus,
-    EmergencyStatus,
 )
 
-from custom_components.unifi_access.hub import DoorState, UnifiAccessHub, _normalize_name
+from custom_components.unifi_access.hub import (
+    DoorState,
+    UnifiAccessHub,
+    _normalize_name,
+)
 
-from .conftest import SAMPLE_DOORS, SAMPLE_EMERGENCY_STATUS, SAMPLE_LOCK_RULE_STATUS
-
+from .conftest import SAMPLE_DOORS
 
 # ---------------------------------------------------------------------------
 # DoorState basics
@@ -131,8 +130,8 @@ class TestHubUpdate:
         self, hub: UnifiAccessHub, mock_api_client: AsyncMock
     ) -> None:
         """If lock rule fetching fails with 404, supports_door_lock_rules becomes False."""
-        mock_api_client.get_door_lock_rule.side_effect = ApiError(
-            "not supported", status_code=404
+        mock_api_client.get_door_lock_rule.side_effect = ApiNotFoundError(
+            "not supported"
         )
         await hub.async_update()
         assert hub.supports_door_lock_rules is False

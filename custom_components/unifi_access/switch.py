@@ -7,10 +7,14 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from unifi_access_api import EmergencyStatus
 
 from . import UnifiAccessConfigEntry
 from .const import DOMAIN
+from .coordinator import UnifiAccessCoordinator
 from .hub import UnifiAccessHub
+
+PARALLEL_UPDATES = 1
 
 
 async def async_setup_entry(
@@ -48,7 +52,7 @@ class EmergencySwitch(CoordinatorEntity, SwitchEntity):
     def __init__(
         self,
         hub: UnifiAccessHub,
-        coordinator,
+        coordinator: UnifiAccessCoordinator[EmergencyStatus],
         *,
         field: str,
         unique_id: str,
@@ -74,7 +78,7 @@ class EmergencySwitch(CoordinatorEntity, SwitchEntity):
     @property
     def is_on(self) -> bool:
         """Get switch status."""
-        return getattr(self.hub, self._field)
+        return bool(getattr(self.hub, self._field))
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn off emergency mode."""

@@ -4,18 +4,19 @@ from __future__ import annotations
 
 from homeassistant.components.event import EventDeviceClass, EventEntity
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import UnifiAccessConfigEntry
 from .const import (
     ACCESS_ENTRY_EVENT,
     ACCESS_EXIT_EVENT,
-    DOMAIN,
     DOORBELL_START_EVENT,
     DOORBELL_STOP_EVENT,
 )
+from .entity import UnifiAccessDoorDeviceMixin
 from .hub import DoorState
+
+PARALLEL_UPDATES = 0
 
 
 async def async_setup_entry(
@@ -35,7 +36,7 @@ async def async_setup_entry(
         )
 
 
-class _UnifiAccessEventEntity(EventEntity):
+class _UnifiAccessEventEntity(UnifiAccessDoorDeviceMixin, EventEntity):
     """Base class for Unifi Access event entities."""
 
     _attr_has_entity_name = True
@@ -46,16 +47,6 @@ class _UnifiAccessEventEntity(EventEntity):
         """Initialize event entity."""
         self.door = door
         self._attr_translation_placeholders = {"door_name": self.door.name}
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Get device information."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, self.door.id)},
-            name=self.door.name,
-            model=self.door.hub_type,
-            manufacturer="Unifi",
-        )
 
     def _async_handle_event(self, event: str, event_attributes: dict[str, str]) -> None:
         """Handle incoming event from hub."""
@@ -76,7 +67,7 @@ class _UnifiAccessEventEntity(EventEntity):
 class AccessEventEntity(_UnifiAccessEventEntity):
     """Authorized User Event Entity."""
 
-    _attr_event_types = [ACCESS_ENTRY_EVENT, ACCESS_EXIT_EVENT]
+    _attr_event_types = [ACCESS_ENTRY_EVENT, ACCESS_EXIT_EVENT]  # noqa: RUF012
     _attr_translation_key = "access_event"
     _event_name = "access"
 
@@ -90,7 +81,7 @@ class DoorbellPressedEventEntity(_UnifiAccessEventEntity):
     """Doorbell Press Event Entity."""
 
     _attr_device_class = EventDeviceClass.DOORBELL
-    _attr_event_types = [DOORBELL_START_EVENT, DOORBELL_STOP_EVENT]
+    _attr_event_types = [DOORBELL_START_EVENT, DOORBELL_STOP_EVENT]  # noqa: RUF012
     _attr_translation_key = "doorbell_event"
     _event_name = "doorbell_press"
 

@@ -1,6 +1,7 @@
 """Platform for number (interval) integration."""
 
 from homeassistant.components.number import RestoreNumber
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
@@ -8,6 +9,8 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from . import UnifiAccessConfigEntry
 from .const import DOMAIN
 from .hub import DoorState
+
+PARALLEL_UPDATES = 0
 
 
 async def async_setup_entry(
@@ -30,7 +33,10 @@ async def async_setup_entry(
 class TemporaryLockRuleIntervalNumberEntity(RestoreNumber):
     """Unifi Access Temporary Lock Rule Interval."""
 
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_entity_registry_enabled_default = False
     _attr_has_entity_name = True
+    _attr_native_step = 1
     _attr_should_poll = False
     _attr_translation_key = "door_lock_rule_interval"
 
@@ -60,7 +66,7 @@ class TemporaryLockRuleIntervalNumberEntity(RestoreNumber):
         if self.native_value:
             self.door.lock_rule_interval = int(self.native_value)
 
-    def set_native_value(self, value: float) -> None:
+    async def async_set_native_value(self, value: float) -> None:
         """Select Door Lock Rule Interval (in minutes)."""
         self._attr_native_value = value
         self.door.lock_rule_interval = int(value)

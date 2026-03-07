@@ -4,19 +4,21 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
-
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+from unifi_access_api import ApiAuthError, ApiConnectionError, ApiError
 
-from custom_components.unifi_access import (
-    UnifiAccessData,
-    async_setup_entry,
-    async_unload_entry,
-)
+from custom_components.unifi_access import UnifiAccessData
 from custom_components.unifi_access.const import DOMAIN
 
-from .conftest import MOCK_CONFIG, SAMPLE_DOORS, SAMPLE_EMERGENCY_STATUS, SAMPLE_LOCK_RULE_STATUS
+from .conftest import (
+    MOCK_CONFIG,
+    SAMPLE_DOORS,
+    SAMPLE_EMERGENCY_STATUS,
+    SAMPLE_LOCK_RULE_STATUS,
+)
 
 
 @pytest.fixture
@@ -35,6 +37,7 @@ def mock_entry(hass: HomeAssistant) -> MockConfigEntry:
 def _make_mock_client() -> AsyncMock:
     """Create a fully mocked API client."""
     client = AsyncMock()
+    client.authenticate = AsyncMock()
     client.get_doors = AsyncMock(return_value=SAMPLE_DOORS)
     client.get_door_lock_rule = AsyncMock(return_value=SAMPLE_LOCK_RULE_STATUS)
     client.get_emergency_status = AsyncMock(return_value=SAMPLE_EMERGENCY_STATUS)
@@ -126,3 +129,80 @@ async def test_unload_entry(
 
     assert result is True
     mock_client.close.assert_called_once()
+
+
+async def test_setup_entry_not_ready(
+    hass: HomeAssistant, mock_entry: MockConfigEntry
+) -> None:
+    """Test setup fails gracefully when API is unreachable."""
+    mock_client = _make_mock_client()
+    mock_client.authenticate = AsyncMock(
+        side_effect=ApiConnectionError("Connection refused")
+    )
+
+    with (
+        patch(
+            "custom_components.unifi_access.UnifiAccessApiClient",
+            return_value=mock_client,
+        ),
+        patch(
+            "custom_components.unifi_access.async_get_clientsession",
+            return_value=AsyncMock(),
+        ),
+    ):
+        await hass.config_entries.async_setup(mock_entry.entry_id)
+        await hass.async_block_till_done()
+
+    assert mock_entry.state is ConfigEntryState.SETUP_RETRY
+
+
+async def test_coordinator_auth_error(
+    hass: HomeAssistant, mock_entry: MockConfigEntry
+) -> None:
+    """Test that an auth error during coordinator refresh triggers reauth."""
+    mock_client = _make_mock_client()
+    mock_client.get_doors = AsyncMock(
+        side_effect=ApiAuthError("Invalid token")
+    )
+
+    with (
+        patch(
+            "custom_components.unifi_access.UnifiAccessApiClient",
+            return_value=mock_client,
+        ),
+        patch(
+            "custom_components.unifi_access.async_get_clientsession",
+            return_value=AsyncMock(),
+        ),
+    ):
+        await hass.config_entries.async_setup(mock_entry.entry_id)
+        await hass.async_block_till_done()
+
+    assert mock_entry.state is ConfigEntryState.SETUP_ERROR
+    flows = hass.config_entries.flow.async_progress()
+    assert any(f["context"]["source"] == "reauth" for f in flows)
+
+
+async def test_coordinator_api_error(
+    hass: HomeAssistant, mock_entry: MockConfigEntry
+) -> None:
+    """Test that a generic API error during coordinator refresh causes setup retry."""
+    mock_client = _make_mock_client()
+    mock_client.get_doors = AsyncMock(
+        side_effect=ApiError("Server error", status_code=500)
+    )
+
+    with (
+        patch(
+            "custom_components.unifi_access.UnifiAccessApiClient",
+            return_value=mock_client,
+        ),
+        patch(
+            "custom_components.unifi_access.async_get_clientsession",
+            return_value=AsyncMock(),
+        ),
+    ):
+        await hass.config_entries.async_setup(mock_entry.entry_id)
+        await hass.async_block_till_done()
+
+    assert mock_entry.state is ConfigEntryState.SETUP_RETRY

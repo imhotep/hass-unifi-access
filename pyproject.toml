@@ -1,8 +1,84 @@
 [project]
 name = "hass-unifi-access"
 version = "3.0.0"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+[tool.ruff]
+required-version = ">=0.15.1"
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "ASYNC",  # flake8-async
+    "B",      # flake8-bugbear
+    "C",      # complexity
+    "D",      # pydocstyle
+    "E",      # pycodestyle errors
+    "F",      # pyflakes
+    "G",      # flake8-logging-format
+    "I",      # isort
+    "ICN001", # import conventions
+    "LOG",    # flake8-logging
+    "N",      # pep8-naming
+    "PERF",   # perflint
+    "PGH",    # pygrep-hooks
+    "PIE",    # flake8-pie
+    "PL",     # pylint
+    "PT",     # flake8-pytest-style
+    "RET",    # flake8-return
+    "RSE",    # flake8-raise
+    "RUF",    # ruff-specific
+    "S",      # flake8-bandit
+    "SIM",    # flake8-simplify
+    "T20",    # flake8-print
+    "TRY",    # tryceratops
+    "UP",     # pyupgrade
+    "W",      # pycodestyle warnings
+]
+ignore = [
+    "D202",     # no blank lines after function docstring
+    "D203",     # 1 blank line before class docstring (conflicts with D211)
+    "D213",     # multi-line docstring summary on second line (conflicts with D212)
+    "D406",     # section name should end with newline
+    "D407",     # section name underlining
+    "E501",     # line too long (handled by formatter)
+    "PLR0913",  # too many arguments
+    "PLR2004",  # magic value in comparison
+    "RUF001",   # ambiguous unicode character
+    "RUF002",   # ambiguous unicode in docstring
+    "SIM102",   # nested if statements
+    "SIM108",   # use ternary operator
+    "TRY003",   # long messages outside exception class
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D", "S101", "S105", "PLR2004", "PT011"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.flake8-pytest-style]
+fixture-parentheses = false
+mark-parentheses = false
+
+[tool.ruff.lint.isort]
+force-sort-within-sections = true
+known-first-party = ["custom_components.unifi_access"]
+combine-as-imports = true
+split-on-trailing-comma = false
+
+[tool.mypy]
+python_version = "3.13"
+follow_imports = "silent"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "unifi_access_api.*"
+ignore_missing_imports = true

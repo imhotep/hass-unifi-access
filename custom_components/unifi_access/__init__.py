@@ -7,12 +7,14 @@ from dataclasses import dataclass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from unifi_access_api import ApiConnectionError, EmergencyStatus, UnifiAccessApiClient
 
-from unifi_access_api import EmergencyStatus, UnifiAccessApiClient
-
-from .coordinator import UnifiAccessCoordinator, UnifiAccessEmergencyCoordinator
-from .hub import UnifiAccessHub
+from .const import DOMAIN
+from .coordinator import UnifiAccessCoordinator
+from .hub import DoorState, UnifiAccessHub
 
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
@@ -31,8 +33,8 @@ class UnifiAccessData:
     """Runtime data for the Unifi Access integration."""
 
     hub: UnifiAccessHub
-    coordinator: UnifiAccessCoordinator
-    emergency_coordinator: UnifiAccessEmergencyCoordinator
+    coordinator: UnifiAccessCoordinator[dict[str, DoorState]]
+    emergency_coordinator: UnifiAccessCoordinator[EmergencyStatus]
 
 
 type UnifiAccessConfigEntry = ConfigEntry[UnifiAccessData]
@@ -53,10 +55,30 @@ async def async_setup_entry(
 
     hub = UnifiAccessHub(client, use_polling=entry.data["use_polling"])
 
-    coordinator = UnifiAccessCoordinator(hass, entry, hub)
+    try:
+        await hub.client.authenticate()
+    except ApiConnectionError as err:
+        raise ConfigEntryNotReady("Unable to connect to UniFi Access") from err
+
+    coordinator: UnifiAccessCoordinator[dict[str, DoorState]] = UnifiAccessCoordinator(
+        hass,
+        entry,
+        hub,
+        name="Unifi Access Coordinator",
+        update_method=hub.async_update,
+        always_update=True,
+    )
     await coordinator.async_config_entry_first_refresh()
 
-    emergency_coordinator = UnifiAccessEmergencyCoordinator(hass, entry, hub)
+    emergency_coordinator: UnifiAccessCoordinator[EmergencyStatus] = (
+        UnifiAccessCoordinator(
+            hass,
+            entry,
+            hub,
+            name="Unifi Access Emergency Coordinator",
+            update_method=hub.async_get_emergency_status,
+        )
+    )
     await emergency_coordinator.async_config_entry_first_refresh()
 
     # Wire WebSocket push → coordinator updates
@@ -91,3 +113,17 @@ async def async_unload_entry(
         await entry.runtime_data.hub.async_close()
 
     return unload_ok
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant,
+    config_entry: UnifiAccessConfigEntry,
+    device_entry: dr.DeviceEntry,
+) -> bool:
+    """Allow removal of devices that are no longer present."""
+    hub = config_entry.runtime_data.hub
+    return not any(
+        identifier
+        for identifier in device_entry.identifiers
+        if identifier[0] == DOMAIN and identifier[1] in hub.doors
+    )

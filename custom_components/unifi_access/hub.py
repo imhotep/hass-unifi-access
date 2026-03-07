@@ -7,15 +7,16 @@ for the Home Assistant integration.
 from __future__ import annotations
 
 import asyncio
-import logging
-import unicodedata
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+import logging
 from typing import Any
+import unicodedata
 
 from unifi_access_api import (
     ApiError,
+    ApiNotFoundError,
     DeviceUpdate,
     Door,
     DoorLockRelayStatus,
@@ -70,12 +71,12 @@ class DoorState:
     @property
     def id(self) -> str:
         """Return the door id."""
-        return self.door.id
+        return str(self.door.id)
 
     @property
     def name(self) -> str:
         """Return the door name."""
-        return self.door.name
+        return str(self.door.name)
 
     @property
     def door_position_status(self) -> DoorPositionStatus:
@@ -90,12 +91,12 @@ class DoorState:
     @property
     def is_locked(self) -> bool:
         """Return whether the door is locked."""
-        return self.door.door_lock_relay_status == DoorLockRelayStatus.LOCK
+        return bool(self.door.door_lock_relay_status == DoorLockRelayStatus.LOCK)
 
     @property
     def is_open(self) -> bool:
         """Return whether the door is open."""
-        return self.door.door_position_status == DoorPositionStatus.OPEN
+        return bool(self.door.door_position_status == DoorPositionStatus.OPEN)
 
     @property
     def doorbell_pressed(self) -> bool:
@@ -138,7 +139,7 @@ class UnifiAccessHub:
         # Set by __init__.py after coordinator creation to push WS updates.
         self.on_doors_updated: Callable[[], None] | None = None
         self.on_emergency_updated: Callable[[], None] | None = None
-        self.create_task: Callable[[Coroutine[Any, Any, None]], None] | None = None
+        self.create_task: Callable[[Coroutine[Any, Any, None]], Any] | None = None
 
     def _notify_doors_updated(self) -> None:
         """Notify that door state changed (triggers coordinator update)."""
@@ -168,14 +169,12 @@ class UnifiAccessHub:
                 rule_status = await self.client.get_door_lock_rule(door_id)
                 state.lock_rule = rule_status.type.value
                 state.lock_rule_ended_time = rule_status.ended_time
-            except ApiError as err:
-                if err.status_code == 404:
-                    _LOGGER.debug(
-                        "Door lock rules not supported for door %s", door_id
-                    )
-                    self.supports_door_lock_rules = False
-                    break
-                raise
+            except ApiNotFoundError:
+                _LOGGER.debug(
+                    "Door lock rules not supported for door %s", door_id
+                )
+                self.supports_door_lock_rules = False
+                break
         return self.doors
 
     async def async_get_emergency_status(self) -> EmergencyStatus:
@@ -265,7 +264,7 @@ class UnifiAccessHub:
         # Update door with fields from the websocket
         ws_state = update.data.state
         if ws_state is not None:
-            updates: dict[str, Any] = {
+            updates: dict[str, DoorPositionStatus | DoorLockRelayStatus] = {
                 "door_position_status": ws_state.dps,
             }
             lock_val = ws_state.lock
@@ -274,7 +273,7 @@ class UnifiAccessHub:
             elif lock_val == "unlocked":
                 updates["door_lock_relay_status"] = DoorLockRelayStatus.UNLOCK
 
-            state.door = state.door.model_copy(update=updates)
+            state.door = state.door.with_updates(**updates)
 
             if ws_state.remain_lock is not None:
                 state.lock_rule = ws_state.remain_lock.type.value
@@ -291,7 +290,7 @@ class UnifiAccessHub:
                 state.thumbnail_last_updated = datetime.fromtimestamp(
                     update.data.thumbnail.door_thumbnail_last_update, tz=UTC
                 )
-            except Exception:
+            except (ApiError, TimeoutError):
                 _LOGGER.debug("Failed to fetch thumbnail for door %s", door_id)
 
         _LOGGER.info(
@@ -469,8 +468,6 @@ class UnifiAccessHub:
 
         if self.create_task:
             self.create_task(_auto_stop())
-        else:
-            asyncio.create_task(_auto_stop())
 
     async def _handle_settings_update(self, msg: WebsocketMessage) -> None:
         """Handle settings update (evacuation/lockdown) messages."""

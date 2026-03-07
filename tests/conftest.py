@@ -12,17 +12,13 @@ from homeassistant.helpers import entity_platform as _ep
 if not hasattr(_ep, "AddConfigEntryEntitiesCallback"):
     _ep.AddConfigEntryEntitiesCallback = _ep.AddEntitiesCallback
 
+import threading
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-from homeassistant.const import CONF_HOST
 from homeassistant.core import HomeAssistant
-
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
-
-import threading
-
 from unifi_access_api import (
     Door,
     DoorLockRelayStatus,

@@ -2,12 +2,17 @@
 
 from datetime import UTC, datetime
 
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import UnifiAccessConfigEntry
+from .coordinator import UnifiAccessCoordinator
 from .entity import UnifiAccessDoorEntity
+from .hub import DoorState
+
+PARALLEL_UPDATES = 0
 
 
 async def async_setup_entry(
@@ -34,9 +39,11 @@ async def async_setup_entry(
 class TemporaryLockRuleSensorEntity(UnifiAccessDoorEntity, SensorEntity):
     """Unifi Access Temporary Lock Rule Sensor."""
 
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
     _attr_translation_key = "door_lock_rule"
 
-    def __init__(self, coordinator, door_id: str) -> None:
+    def __init__(self, coordinator: UnifiAccessCoordinator[dict[str, DoorState]], door_id: str) -> None:
         """Initialize Unifi Access Door Lock Rule Sensor."""
         super().__init__(coordinator, coordinator.data[door_id])
         self._attr_unique_id = f"door_lock_rule_sensor_{self.door.id}"
@@ -50,19 +57,21 @@ class TemporaryLockRuleSensorEntity(UnifiAccessDoorEntity, SensorEntity):
 class TemporaryLockRuleEndTimeSensorEntity(UnifiAccessDoorEntity, SensorEntity):
     """Unifi Access Temporary Lock Rule Sensor End Time."""
 
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
     _attr_translation_key = "door_lock_rule_ended_time"
 
-    def __init__(self, coordinator, door_id: str) -> None:
+    def __init__(self, coordinator: UnifiAccessCoordinator[dict[str, DoorState]], door_id: str) -> None:
         """Initialize Unifi Access Door Lock Rule Sensor End Time."""
         super().__init__(coordinator, coordinator.data[door_id])
         self._attr_unique_id = f"door_lock_rule_sensor_ended_time_{self.door.id}"
 
     @property
-    def native_value(self) -> str:
+    def native_value(self) -> datetime | None:
         """Get native value."""
         if self.door.lock_rule_ended_time and int(self.door.lock_rule_ended_time) != 0:
-            utc_timestamp = int(self.door.lock_rule_ended_time)
-            utc_datetime = datetime.fromtimestamp(utc_timestamp, tz=UTC)
-            local_datetime = utc_datetime.astimezone()
-            return local_datetime.strftime("%Y-%m-%d %H:%M:%S %Z")
-        return ""
+            return datetime.fromtimestamp(
+                int(self.door.lock_rule_ended_time), tz=UTC
+            )
+        return None

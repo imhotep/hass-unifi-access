@@ -9,8 +9,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import UnifiAccessConfigEntry
+from .coordinator import UnifiAccessCoordinator
 from .entity import UnifiAccessDoorEntity
 from .hub import DoorState
+
+PARALLEL_UPDATES = 0
 
 
 async def async_setup_entry(
@@ -35,7 +38,7 @@ class UnifiDoorImageEntity(UnifiAccessDoorEntity, ImageEntity):
     _attr_translation_key = "door_thumbnail"
 
     def __init__(
-        self, coordinator, hass: HomeAssistant, verify_ssl: bool, door: DoorState
+        self, coordinator: UnifiAccessCoordinator[dict[str, DoorState]], hass: HomeAssistant, verify_ssl: bool, door: DoorState
     ) -> None:
         """Initialize Unifi Access Door Image."""
         UnifiAccessDoorEntity.__init__(self, coordinator, door)
