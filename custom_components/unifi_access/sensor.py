@@ -64,5 +64,5 @@ class TemporaryLockRuleEndTimeSensorEntity(UnifiAccessDoorEntity, SensorEntity):
             utc_timestamp = int(self.door.lock_rule_ended_time)
             utc_datetime = datetime.fromtimestamp(utc_timestamp, tz=UTC)
             local_datetime = utc_datetime.astimezone()
-            return f" {local_datetime.strftime('%Y-%m-%d %H:%M:%S %Z')}"
+            return local_datetime.strftime("%Y-%m-%d %H:%M:%S %Z")
         return ""

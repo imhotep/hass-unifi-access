@@ -42,17 +42,22 @@ def auto_enable_custom_integrations(enable_custom_integrations: None) -> None:
 
 @pytest.fixture(autouse=True)
 def _cleanup_stray_threads():
-    """Mark stray daemon threads so verify_cleanup ignores them.
+    """Mark known benign daemon threads so verify_cleanup ignores them.
 
-    Python 3.12 + HA test framework can leave a _run_safe_shutdown_loop daemon
-    thread.  The framework's verify_cleanup only allows DummyThread or threads
-    whose name starts with ``waitpid-``.  We rename any stray daemon threads to
-    start with ``waitpid-`` so they pass the check.
+    Python 3.12 + HA test framework can leave a ``_run_safe_shutdown_loop``
+    daemon thread.  The framework's verify_cleanup only allows DummyThread or
+    threads whose name starts with ``waitpid-``.  We rename only these known
+    framework threads so they pass the check.
     """
     threads_before = frozenset(threading.enumerate())
     yield
+    known_stray_threads = ("_run_safe_shutdown_loop",)
     for thread in frozenset(threading.enumerate()) - threads_before:
-        if thread.daemon and thread.is_alive():
+        if (
+            thread.daemon
+            and thread.is_alive()
+            and any(name in thread.name for name in known_stray_threads)
+        ):
             thread.name = f"waitpid-{thread.name}"
 
 # ---------------------------------------------------------------------------

@@ -15,6 +15,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from unifi_access_api import (
+    ApiError,
     DeviceUpdate,
     Door,
     DoorLockRelayStatus,
@@ -167,9 +168,14 @@ class UnifiAccessHub:
                 rule_status = await self.client.get_door_lock_rule(door_id)
                 state.lock_rule = rule_status.type.value
                 state.lock_rule_ended_time = rule_status.ended_time
-            except Exception:
-                _LOGGER.debug("Could not fetch lock rule for door %s", door_id)
-                self.supports_door_lock_rules = False
+            except ApiError as err:
+                if err.status_code == 404:
+                    _LOGGER.debug(
+                        "Door lock rules not supported for door %s", door_id
+                    )
+                    self.supports_door_lock_rules = False
+                    break
+                raise
         return self.doors
 
     async def async_get_emergency_status(self) -> EmergencyStatus:
@@ -191,12 +197,27 @@ class UnifiAccessHub:
         await self.client.set_emergency_status(new_status)
         self.evacuation = new_status.evacuation
         self.lockdown = new_status.lockdown
+        self._notify_emergency_updated()
 
     async def async_set_lock_rule(self, door_id: str, rule_type: str) -> None:
         """Set a door lock rule."""
+        if not rule_type:
+            return
+
         state = self.doors.get(door_id)
         interval = state.lock_rule_interval if state else 0
-        rule = DoorLockRule(type=DoorLockRuleType(rule_type), interval=interval)
+
+        try:
+            door_lock_rule_type = DoorLockRuleType(rule_type)
+        except ValueError:
+            _LOGGER.warning(
+                "Unsupported door lock rule type '%s' for door %s",
+                rule_type,
+                door_id,
+            )
+            return
+
+        rule = DoorLockRule(type=door_lock_rule_type, interval=interval)
         await self.client.set_door_lock_rule(door_id, rule)
 
     # ------------------------------------------------------------------
@@ -241,26 +262,19 @@ class UnifiAccessHub:
         if state is None:
             return
 
-        # Rebuild door with updated fields from the websocket
-        old_door = state.door
-        new_kwargs: dict[str, Any] = {
-            "id": old_door.id,
-            "name": old_door.name,
-            "full_name": old_door.full_name,
-            "floor_id": old_door.floor_id,
-            "type": old_door.type,
-            "is_bind_hub": old_door.is_bind_hub,
-            "door_position_status": old_door.door_position_status,
-            "door_lock_relay_status": old_door.door_lock_relay_status,
-        }
+        # Update door with fields from the websocket
         ws_state = update.data.state
         if ws_state is not None:
-            new_kwargs["door_position_status"] = ws_state.dps
+            updates: dict[str, Any] = {
+                "door_position_status": ws_state.dps,
+            }
             lock_val = ws_state.lock
             if lock_val == "locked":
-                new_kwargs["door_lock_relay_status"] = DoorLockRelayStatus.LOCK
+                updates["door_lock_relay_status"] = DoorLockRelayStatus.LOCK
             elif lock_val == "unlocked":
-                new_kwargs["door_lock_relay_status"] = DoorLockRelayStatus.UNLOCK
+                updates["door_lock_relay_status"] = DoorLockRelayStatus.UNLOCK
+
+            state.door = state.door.model_copy(update=updates)
 
             if ws_state.remain_lock is not None:
                 state.lock_rule = ws_state.remain_lock.type.value
@@ -268,8 +282,6 @@ class UnifiAccessHub:
             elif ws_state.remain_unlock is not None:
                 state.lock_rule = ws_state.remain_unlock.type.value
                 state.lock_rule_ended_time = ws_state.remain_unlock.ended_time
-
-        state.door = Door(**new_kwargs)
 
         # Handle thumbnail
         if update.data.thumbnail is not None:
@@ -440,8 +452,12 @@ class UnifiAccessHub:
         state.trigger_event("doorbell_press", event_attributes)
 
         # Schedule automatic stop after 2 seconds
+        captured_request_id = update.data.request_id
+
         async def _auto_stop() -> None:
             await asyncio.sleep(2)
+            if state.doorbell_request_id != captured_request_id:
+                return
             state.doorbell_request_id = None
             stop_attrs = {
                 "door_name": state.name,

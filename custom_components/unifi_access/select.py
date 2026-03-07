@@ -61,6 +61,8 @@ class TemporaryLockRuleSelectEntity(UnifiAccessDoorEntity, SelectEntity):
 
     async def async_select_option(self, option: str) -> None:
         """Select Door Lock Rule."""
+        if not option:
+            return
         await self._data.hub.async_set_lock_rule(self.door.id, option)
 
     def _handle_coordinator_update(self) -> None:

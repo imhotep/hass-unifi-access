@@ -59,7 +59,8 @@ class _UnifiAccessEventEntity(EventEntity):
 
     def _async_handle_event(self, event: str, event_attributes: dict[str, str]) -> None:
         """Handle incoming event from hub."""
-        self._trigger_event(event, event_attributes)
+        event_type = event_attributes.get("type", event)
+        self._trigger_event(event_type, event_attributes)
         self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:

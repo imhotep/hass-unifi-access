@@ -9,7 +9,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from unifi_access_api import UnifiAccessApiClient
+from unifi_access_api import EmergencyStatus, UnifiAccessApiClient
 
 from .coordinator import UnifiAccessCoordinator, UnifiAccessEmergencyCoordinator
 from .hub import UnifiAccessHub
@@ -61,8 +61,8 @@ async def async_setup_entry(
 
     # Wire WebSocket push → coordinator updates
     hub.on_doors_updated = lambda: coordinator.async_set_updated_data(hub.doors)
-    hub.on_emergency_updated = (
-        lambda: emergency_coordinator.async_set_updated_data(True)
+    hub.on_emergency_updated = lambda: emergency_coordinator.async_set_updated_data(
+        EmergencyStatus(evacuation=hub.evacuation, lockdown=hub.lockdown)
     )
 
     entry.runtime_data = UnifiAccessData(
