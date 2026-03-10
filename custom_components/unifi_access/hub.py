@@ -17,6 +17,7 @@ import unicodedata
 from unifi_access_api import (
     ApiError,
     ApiNotFoundError,
+    BaseInfo,
     DeviceUpdate,
     Door,
     DoorLockRelayStatus,
@@ -25,17 +26,27 @@ from unifi_access_api import (
     DoorPositionStatus,
     EmergencyStatus,
     HwDoorbell,
+    InsightsAdd,
+    LocationUpdateLegacy,
     LocationUpdateV2,
     LogAdd,
     RemoteView,
     RemoteViewChange,
     SettingUpdate,
     UnifiAccessApiClient,
+    V2DeviceUpdate,
+    V2LocationUpdate,
     WsMessageHandler,
 )
 from unifi_access_api.models.websocket import WebsocketMessage
 
-from .const import ACCESS_EVENT, DOORBELL_START_EVENT, DOORBELL_STOP_EVENT
+from .const import (
+    ACCESS_ENTRY_EVENT,
+    ACCESS_EXIT_EVENT,
+    ACCESS_GENERIC_EVENT,
+    DOORBELL_START_EVENT,
+    DOORBELL_STOP_EVENT,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -235,6 +246,11 @@ class UnifiAccessHub:
         """Start the websocket connection with all event handlers."""
         handlers: dict[str, WsMessageHandler] = {
             "access.data.device.location_update_v2": self._handle_location_update,
+            "access.data.v2.location.update": self._handle_v2_location_update,
+            "access.data.location.update": self._handle_location_update_legacy,
+            "access.data.v2.device.update": self._handle_v2_device_update,
+            "access.logs.insights.add": self._handle_insights_add,
+            "access.base.info": self._handle_base_info,
             "access.remote_view": self._handle_remote_view,
             "access.remote_view.change": self._handle_remote_view_change,
             "access.data.device.update": self._handle_device_update,
@@ -253,6 +269,24 @@ class UnifiAccessHub:
         await self.client.close()
 
     # ------------------------------------------------------------------
+    # WebSocket helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _apply_lock_dps(
+        state: DoorState, *, dps: DoorPositionStatus, lock: str
+    ) -> None:
+        """Apply lock relay and door position updates to a door state."""
+        updates: dict[str, DoorPositionStatus | DoorLockRelayStatus] = {
+            "door_position_status": dps,
+        }
+        if lock == "locked":
+            updates["door_lock_relay_status"] = DoorLockRelayStatus.LOCK
+        elif lock == "unlocked":
+            updates["door_lock_relay_status"] = DoorLockRelayStatus.UNLOCK
+        state.door = state.door.with_updates(**updates)
+
+    # ------------------------------------------------------------------
     # WebSocket handlers
     # ------------------------------------------------------------------
 
@@ -268,16 +302,7 @@ class UnifiAccessHub:
         # Update door with fields from the websocket
         ws_state = update.data.state
         if ws_state is not None:
-            updates: dict[str, DoorPositionStatus | DoorLockRelayStatus] = {
-                "door_position_status": ws_state.dps,
-            }
-            lock_val = ws_state.lock
-            if lock_val == "locked":
-                updates["door_lock_relay_status"] = DoorLockRelayStatus.LOCK
-            elif lock_val == "unlocked":
-                updates["door_lock_relay_status"] = DoorLockRelayStatus.UNLOCK
-
-            state.door = state.door.with_updates(**updates)
+            self._apply_lock_dps(state, dps=ws_state.dps, lock=ws_state.lock)
 
             if ws_state.remain_lock is not None:
                 state.lock_rule = ws_state.remain_lock.type.value
@@ -379,7 +404,7 @@ class UnifiAccessHub:
                 self._notify_doors_updated()
 
     async def _handle_logs_add(self, msg: WebsocketMessage) -> None:
-        """Handle access log messages."""
+        """Handle access log messages (logging only, events via insights_add)."""
         update: LogAdd = msg  # type: ignore[assignment]
         source = update.data.source
 
@@ -389,50 +414,13 @@ class UnifiAccessHub:
         if door_target is None:
             return
 
-        door_id = door_target.id
-        state = self.doors.get(door_id)
-
-        # Buggy firmware sometimes reports hub_id instead of door_id
-        if state is None:
-            state = next(
-                (s for s in self.doors.values() if s.hub_id == door_id), None
-            )
-        if state is None:
-            return
-
-        actor = source.actor.display_name
-        result = source.event.result
-        authentication = source.authentication.credential_provider
-
-        device_config = next(
-            (t for t in source.target if t.type == "device_config"), None
+        _LOGGER.debug(
+            "Log add for door %s: %s by %s (%s)",
+            door_target.id,
+            source.event.result,
+            source.actor.display_name,
+            source.authentication.credential_provider,
         )
-        if device_config is None:
-            return
-
-        # device_config target has display_name via extra fields
-        raw = device_config.model_dump()
-        access_type = raw.get("display_name", "")
-
-        event_attributes = {
-            "door_name": state.name,
-            "door_id": state.id,
-            "actor": actor,
-            "authentication": authentication,
-            "type": ACCESS_EVENT.format(type=access_type),
-            "result": result,
-        }
-        _LOGGER.info(
-            "Door %s (%s) accessed by %s via %s (%s): %s",
-            state.name,
-            state.id,
-            actor,
-            authentication,
-            access_type,
-            result,
-        )
-        self._notify_doors_updated()
-        state.trigger_event("access", event_attributes)
 
     async def _handle_hw_door_bell(self, msg: WebsocketMessage) -> None:
         """Handle hardware doorbell press messages."""
@@ -472,6 +460,150 @@ class UnifiAccessHub:
 
         if self.create_task:
             self.create_task(_auto_stop())
+
+    async def _handle_insights_add(self, msg: WebsocketMessage) -> None:
+        """Handle insights add (access entry/exit) events."""
+        update: InsightsAdd = msg  # type: ignore[assignment]
+        door_id = update.data.metadata.door.id
+
+        state = self.doors.get(door_id)
+        if state is None:
+            return
+
+        direction = update.data.metadata.opened_direction.display_name.lower()
+        if direction == "entry":
+            event_type = ACCESS_ENTRY_EVENT
+        elif direction == "exit":
+            event_type = ACCESS_EXIT_EVENT
+        else:
+            event_type = ACCESS_GENERIC_EVENT
+
+        event_attributes = {
+            "door_name": state.name,
+            "door_id": state.id,
+            "actor": update.data.metadata.actor.display_name,
+            "authentication": update.data.metadata.authentication.display_name,
+            "type": event_type,
+            "method": update.data.metadata.opened_method.display_name,
+            "result": update.data.result,
+        }
+        _LOGGER.info(
+            "Insight: %s on %s (%s) by %s via %s: %s",
+            update.data.event_type,
+            state.name,
+            state.id,
+            update.data.metadata.actor.display_name,
+            update.data.metadata.authentication.display_name,
+            update.data.result,
+        )
+        state.trigger_event("access", event_attributes)
+
+    async def _handle_v2_location_update(self, msg: WebsocketMessage) -> None:
+        """Handle V2 location update messages."""
+        update: V2LocationUpdate = msg  # type: ignore[assignment]
+        door_id = update.data.id
+
+        state = self.doors.get(door_id)
+        if state is None:
+            return
+
+        ws_state = update.data.state
+        if ws_state is not None:
+            self._apply_lock_dps(state, dps=ws_state.dps, lock=ws_state.lock)
+
+        # Handle thumbnail
+        if update.data.thumbnail is not None:
+            thumb_url = update.data.thumbnail.url
+            try:
+                state.thumbnail = await self.client.get_thumbnail(thumb_url)
+                state.thumbnail_last_updated = datetime.fromtimestamp(
+                    update.data.thumbnail.door_thumbnail_last_update, tz=UTC
+                )
+            except (ApiError, TimeoutError):
+                _LOGGER.debug("Failed to fetch thumbnail for door %s", door_id)
+
+        _LOGGER.info(
+            "V2 location update door %s (%s): locked=%s dps=%s",
+            state.name,
+            state.id,
+            state.door_lock_relay_status,
+            state.door_position_status,
+        )
+        self._notify_doors_updated()
+
+    async def _handle_v2_device_update(self, msg: WebsocketMessage) -> None:
+        """Handle V2 device update messages."""
+        update: V2DeviceUpdate = msg  # type: ignore[assignment]
+        device_id = update.data.id
+        device_type = update.data.device_type
+
+        updated = False
+        for loc_state in update.data.location_states:
+            door_id = loc_state.location_id
+            state = self.doors.get(door_id)
+            if state is None:
+                continue
+
+            if state.hub_id is None:
+                state.hub_type = device_type
+                state.hub_id = device_id
+
+            self._apply_lock_dps(state, dps=loc_state.dps, lock=loc_state.lock)
+            updated = True
+
+        _LOGGER.debug(
+            "V2 device update %s (%s): online=%s firmware=%s",
+            update.data.alias or update.data.name,
+            device_id,
+            update.data.online,
+            update.data.firmware,
+        )
+        if updated:
+            self._notify_doors_updated()
+
+    async def _handle_location_update_legacy(
+        self, msg: WebsocketMessage
+    ) -> None:
+        """Handle legacy (V1) location update messages."""
+        update: LocationUpdateLegacy = msg  # type: ignore[assignment]
+        door_id = update.data.unique_id
+
+        state = self.doors.get(door_id)
+        if state is None:
+            return
+
+        updated = False
+        extras = update.data.extras
+        if extras is not None:
+            thumb_url = extras.get("door_thumbnail")
+            thumb_ts = extras.get("door_thumbnail_last_update")
+            if thumb_url and isinstance(thumb_url, str):
+                try:
+                    state.thumbnail = await self.client.get_thumbnail(
+                        thumb_url
+                    )
+                    if thumb_ts is not None:
+                        state.thumbnail_last_updated = datetime.fromtimestamp(
+                            int(thumb_ts), tz=UTC
+                        )
+                    updated = True
+                except (ApiError, TimeoutError, ValueError):
+                    _LOGGER.debug(
+                        "Failed to fetch thumbnail for door %s", door_id
+                    )
+
+        _LOGGER.debug(
+            "Legacy location update door %s (%s)",
+            state.name,
+            state.id,
+        )
+        if updated:
+            self._notify_doors_updated()
+
+    async def _handle_base_info(self, msg: WebsocketMessage) -> None:
+        """Handle base info (log counter) messages."""
+        update: BaseInfo = msg  # type: ignore[assignment]
+        _LOGGER.debug("Base info: top_log_count=%s", update.data.top_log_count)
 
     async def _handle_settings_update(self, msg: WebsocketMessage) -> None:
         """Handle settings update (evacuation/lockdown) messages."""

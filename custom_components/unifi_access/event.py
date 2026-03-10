@@ -10,6 +10,7 @@ from . import UnifiAccessConfigEntry
 from .const import (
     ACCESS_ENTRY_EVENT,
     ACCESS_EXIT_EVENT,
+    ACCESS_GENERIC_EVENT,
     DOORBELL_START_EVENT,
     DOORBELL_STOP_EVENT,
 )
@@ -67,7 +68,7 @@ class _UnifiAccessEventEntity(UnifiAccessDoorDeviceMixin, EventEntity):
 class AccessEventEntity(_UnifiAccessEventEntity):
     """Authorized User Event Entity."""
 
-    _attr_event_types = [ACCESS_ENTRY_EVENT, ACCESS_EXIT_EVENT]  # noqa: RUF012
+    _attr_event_types = [ACCESS_ENTRY_EVENT, ACCESS_EXIT_EVENT, ACCESS_GENERIC_EVENT]  # noqa: RUF012
     _attr_translation_key = "access_event"
     _event_name = "access"
 

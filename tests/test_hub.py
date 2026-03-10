@@ -307,6 +307,294 @@ class TestHubWebSocketHandlers:
         assert hub.lockdown is True
         hub.on_emergency_updated.assert_called_once()
 
+    async def test_handle_insights_add(self, hub: UnifiAccessHub) -> None:
+        """Test insights add handler triggers access event."""
+        msg = MagicMock()
+        msg.data.metadata.door.id = "door-001"
+        msg.data.metadata.actor.display_name = "Raphael"
+        msg.data.metadata.authentication.display_name = "FACE"
+        msg.data.metadata.opened_method.display_name = "face"
+        msg.data.metadata.opened_direction.display_name = "entry"
+        msg.data.event_type = "access.door.unlock"
+        msg.data.result = "ACCESS"
+
+        events_received = []
+        hub.doors["door-001"].add_event_listener(
+            "access", lambda e, a: events_received.append((e, a))
+        )
+
+        await hub._handle_insights_add(msg)
+
+        assert len(events_received) == 1
+        assert events_received[0][1]["actor"] == "Raphael"
+        assert events_received[0][1]["authentication"] == "FACE"
+        assert events_received[0][1]["type"] == "unifi_access_entry"
+        assert events_received[0][1]["method"] == "face"
+        assert events_received[0][1]["result"] == "ACCESS"
+        hub.on_doors_updated.assert_not_called()
+
+    async def test_handle_insights_add_unknown_door(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """Ignore insights for unknown doors."""
+        msg = MagicMock()
+        msg.data.metadata.door.id = "door-unknown"
+        await hub._handle_insights_add(msg)
+        hub.on_doors_updated.assert_not_called()
+
+    async def test_handle_v2_location_update(self, hub: UnifiAccessHub) -> None:
+        """Test V2 location update handler."""
+        msg = MagicMock()
+        msg.data.id = "door-001"
+        msg.data.state = MagicMock()
+        msg.data.state.dps = DoorPositionStatus.CLOSE
+        msg.data.state.lock = "unlocked"
+        msg.data.thumbnail = None
+
+        await hub._handle_v2_location_update(msg)
+
+        assert hub.doors["door-001"].door.door_position_status == DoorPositionStatus.CLOSE
+        assert hub.doors["door-001"].door.door_lock_relay_status == DoorLockRelayStatus.UNLOCK
+        hub.on_doors_updated.assert_called_once()
+
+    async def test_handle_v2_location_update_unknown_door(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """Ignore V2 location updates for unknown doors."""
+        msg = MagicMock()
+        msg.data.id = "door-unknown"
+        await hub._handle_v2_location_update(msg)
+        hub.on_doors_updated.assert_not_called()
+
+    async def test_handle_v2_location_update_with_thumbnail(
+        self, hub: UnifiAccessHub, mock_api_client: AsyncMock
+    ) -> None:
+        """Test V2 location update fetches thumbnail when present."""
+        mock_api_client.get_thumbnail = AsyncMock(return_value=b"thumb")
+
+        msg = MagicMock()
+        msg.data.id = "door-001"
+        msg.data.state = None
+        msg.data.thumbnail = MagicMock()
+        msg.data.thumbnail.url = "/thumb.jpg"
+        msg.data.thumbnail.door_thumbnail_last_update = 1700000000
+
+        await hub._handle_v2_location_update(msg)
+
+        assert hub.doors["door-001"].thumbnail == b"thumb"
+        assert hub.doors["door-001"].thumbnail_last_updated is not None
+        hub.on_doors_updated.assert_called_once()
+
+    async def test_handle_v2_device_update(self, hub: UnifiAccessHub) -> None:
+        """Test V2 device update handler updates door state."""
+        msg = MagicMock()
+        msg.data.id = "hub-001"
+        msg.data.device_type = "UA-Hub"
+        msg.data.alias = "My Hub"
+        msg.data.name = "Hub"
+        msg.data.online = True
+        msg.data.firmware = "v1.4.6.0"
+
+        loc_state = MagicMock()
+        loc_state.location_id = "door-001"
+        loc_state.dps = DoorPositionStatus.CLOSE
+        loc_state.lock = "unlocked"
+        msg.data.location_states = [loc_state]
+
+        await hub._handle_v2_device_update(msg)
+
+        assert hub.doors["door-001"].hub_type == "UA-Hub"
+        assert hub.doors["door-001"].hub_id == "hub-001"
+        assert hub.doors["door-001"].door.door_position_status == DoorPositionStatus.CLOSE
+        assert hub.doors["door-001"].door.door_lock_relay_status == DoorLockRelayStatus.UNLOCK
+        hub.on_doors_updated.assert_called_once()
+
+    async def test_handle_v2_device_update_unknown_location(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """V2 device update with unknown location_id should be skipped."""
+        msg = MagicMock()
+        msg.data.id = "hub-001"
+        msg.data.device_type = "UA-Hub"
+        msg.data.alias = "Hub"
+        msg.data.name = "Hub"
+        msg.data.online = True
+        msg.data.firmware = "v1.4.6.0"
+
+        loc_state = MagicMock()
+        loc_state.location_id = "door-unknown"
+        loc_state.dps = DoorPositionStatus.CLOSE
+        loc_state.lock = "locked"
+        msg.data.location_states = [loc_state]
+
+        await hub._handle_v2_device_update(msg)
+        hub.on_doors_updated.assert_not_called()
+
+    async def test_handle_v2_device_update_hub_already_set(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """V2 device update should not overwrite existing hub_id."""
+        hub.doors["door-001"].hub_id = "existing-hub"
+        hub.doors["door-001"].hub_type = "UA-Hub-Old"
+
+        msg = MagicMock()
+        msg.data.id = "hub-new"
+        msg.data.device_type = "UA-Hub-New"
+        msg.data.alias = "New Hub"
+        msg.data.name = "Hub"
+        msg.data.online = True
+        msg.data.firmware = "v2.0"
+
+        loc_state = MagicMock()
+        loc_state.location_id = "door-001"
+        loc_state.dps = DoorPositionStatus.CLOSE
+        loc_state.lock = "unlocked"
+        msg.data.location_states = [loc_state]
+
+        await hub._handle_v2_device_update(msg)
+
+        assert hub.doors["door-001"].hub_id == "existing-hub"
+        assert hub.doors["door-001"].hub_type == "UA-Hub-Old"
+        assert hub.doors["door-001"].door.door_position_status == DoorPositionStatus.CLOSE
+        hub.on_doors_updated.assert_called_once()
+
+    async def test_handle_location_update_legacy(
+        self, hub: UnifiAccessHub, mock_api_client: AsyncMock
+    ) -> None:
+        """Test legacy location update handler fetches thumbnail."""
+        mock_api_client.get_thumbnail = AsyncMock(return_value=b"thumb")
+
+        msg = MagicMock()
+        msg.data.unique_id = "door-001"
+        msg.data.extras = {
+            "door_thumbnail": "/thumb.jpg",
+            "door_thumbnail_last_update": 1700000000,
+        }
+
+        await hub._handle_location_update_legacy(msg)
+
+        assert hub.doors["door-001"].thumbnail == b"thumb"
+        assert hub.doors["door-001"].thumbnail_last_updated is not None
+        hub.on_doors_updated.assert_called_once()
+
+    async def test_handle_location_update_legacy_unknown_door(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """Ignore legacy location updates for unknown doors."""
+        msg = MagicMock()
+        msg.data.unique_id = "door-unknown"
+        await hub._handle_location_update_legacy(msg)
+        hub.on_doors_updated.assert_not_called()
+
+    async def test_handle_location_update_legacy_no_extras(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """Legacy location update with no extras should not notify."""
+        msg = MagicMock()
+        msg.data.unique_id = "door-001"
+        msg.data.extras = None
+
+        await hub._handle_location_update_legacy(msg)
+        hub.on_doors_updated.assert_not_called()
+
+    async def test_handle_base_info(self, hub: UnifiAccessHub) -> None:
+        """Test base info handler does not crash."""
+        msg = MagicMock()
+        msg.data.top_log_count = 42
+        await hub._handle_base_info(msg)
+        # Should not trigger any state updates
+        hub.on_doors_updated.assert_not_called()
+
+    async def test_handle_logs_add_logging_only(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """logs.add should only log, not trigger events (insights_add is primary)."""
+        msg = MagicMock()
+        msg.data.source.target = [
+            MagicMock(type="door", id="door-001"),
+        ]
+        msg.data.source.actor.display_name = "Test"
+        msg.data.source.event.result = "ACCESS"
+        msg.data.source.authentication.credential_provider = "NFC"
+
+        events_received = []
+        hub.doors["door-001"].add_event_listener(
+            "access", lambda e, a: events_received.append(a)
+        )
+
+        await hub._handle_logs_add(msg)
+
+        hub.on_doors_updated.assert_not_called()
+        assert len(events_received) == 0
+
+    async def test_handle_insights_add_empty_direction(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """InsightsAdd with empty opened_direction should use generic event type."""
+        msg = MagicMock()
+        msg.data.metadata.door.id = "door-001"
+        msg.data.metadata.actor.display_name = "Test"
+        msg.data.metadata.authentication.display_name = "NFC"
+        msg.data.metadata.opened_method.display_name = "nfc"
+        msg.data.metadata.opened_direction.display_name = ""
+        msg.data.event_type = "access.door.unlock"
+        msg.data.result = "ACCESS"
+
+        events_received = []
+        hub.doors["door-001"].add_event_listener(
+            "access", lambda e, a: events_received.append(a)
+        )
+
+        await hub._handle_insights_add(msg)
+
+        assert len(events_received) == 1
+        assert events_received[0]["type"] == "unifi_access_access"
+        hub.on_doors_updated.assert_not_called()
+
+    async def test_handle_insights_add_unknown_direction(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """InsightsAdd with unexpected direction should use generic event type."""
+        msg = MagicMock()
+        msg.data.metadata.door.id = "door-001"
+        msg.data.metadata.actor.display_name = "Test"
+        msg.data.metadata.authentication.display_name = "NFC"
+        msg.data.metadata.opened_method.display_name = "nfc"
+        msg.data.metadata.opened_direction.display_name = "denied"
+        msg.data.event_type = "access.door.unlock"
+        msg.data.result = "ACCESS"
+
+        events_received = []
+        hub.doors["door-001"].add_event_listener(
+            "access", lambda e, a: events_received.append(a)
+        )
+
+        await hub._handle_insights_add(msg)
+
+        assert len(events_received) == 1
+        assert events_received[0]["type"] == "unifi_access_access"
+
+    async def test_apply_lock_dps(self, hub: UnifiAccessHub) -> None:
+        """Test the _apply_lock_dps helper updates door state."""
+        state = hub.doors["door-001"]
+        UnifiAccessHub._apply_lock_dps(
+            state, dps=DoorPositionStatus.CLOSE, lock="unlocked"
+        )
+        assert state.door.door_position_status == DoorPositionStatus.CLOSE
+        assert state.door.door_lock_relay_status == DoorLockRelayStatus.UNLOCK
+
+    async def test_apply_lock_dps_unknown_lock(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """Unknown lock value should only update DPS, not lock relay."""
+        state = hub.doors["door-001"]
+        original_lock = state.door.door_lock_relay_status
+        UnifiAccessHub._apply_lock_dps(
+            state, dps=DoorPositionStatus.CLOSE, lock="unknown"
+        )
+        assert state.door.door_position_status == DoorPositionStatus.CLOSE
+        assert state.door.door_lock_relay_status == original_lock
+
     async def test_start_websocket(
         self, hub: UnifiAccessHub, mock_api_client: AsyncMock
     ) -> None:
@@ -315,6 +603,11 @@ class TestHubWebSocketHandlers:
         mock_api_client.start_websocket.assert_called_once()
         handlers = mock_api_client.start_websocket.call_args[0][0]
         assert "access.data.device.location_update_v2" in handlers
+        assert "access.data.v2.location.update" in handlers
+        assert "access.data.location.update" in handlers
+        assert "access.data.v2.device.update" in handlers
+        assert "access.logs.insights.add" in handlers
+        assert "access.base.info" in handlers
         assert "access.remote_view" in handlers
         assert "access.remote_view.change" in handlers
         assert "access.data.device.update" in handlers
