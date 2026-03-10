@@ -233,7 +233,7 @@ class TestSensorPlatform:
     async def test_sensor_entities_registered(
         self, hass: HomeAssistant, setup_integration
     ) -> None:
-        """Lock rule sensor entities should be registered (disabled by default)."""
+        """Lock rule sensor entities should be registered."""
         registry = er.async_get(hass)
         sensor_entries = [
             e for e in registry.entities.values()
@@ -241,7 +241,6 @@ class TestSensorPlatform:
         ]
         # 2 doors x 2 sensors (rule + end time) = 4
         assert len(sensor_entries) == 4
-        assert all(e.disabled_by == er.RegistryEntryDisabler.INTEGRATION for e in sensor_entries)
 
     async def test_lock_rule_sensor_value(
         self, hass: HomeAssistant, setup_integration

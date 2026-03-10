@@ -219,6 +219,10 @@ class UnifiAccessHub:
         rule = DoorLockRule(type=door_lock_rule_type, interval=interval)
         await self.client.set_door_lock_rule(door_id, rule)
 
+        if state is not None:
+            state.lock_rule = rule_type
+            self._notify_doors_updated()
+
     # ------------------------------------------------------------------
     # WebSocket
     # ------------------------------------------------------------------

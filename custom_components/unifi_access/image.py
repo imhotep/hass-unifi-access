@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-
 from homeassistant.components.image import ImageEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
@@ -46,11 +44,11 @@ class UnifiDoorImageEntity(UnifiAccessDoorEntity, ImageEntity):
         self._attr_unique_id = self.door.id
         self._attr_translation_placeholders = {"door_name": self.door.name}
 
-    @property
-    def image_last_updated(self) -> datetime | None:
-        """Get Unifi Access Door Image Last Updated."""
-        return self.door.thumbnail_last_updated
-
     async def async_image(self) -> bytes | None:
         """Get Unifi Access Door Image Thumbnail."""
         return self.door.thumbnail
+
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        self._attr_image_last_updated = self.door.thumbnail_last_updated
+        self.async_write_ha_state()

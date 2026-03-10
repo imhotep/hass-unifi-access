@@ -40,7 +40,6 @@ class TemporaryLockRuleSensorEntity(UnifiAccessDoorEntity, SensorEntity):
     """Unifi Access Temporary Lock Rule Sensor."""
 
     _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_entity_registry_enabled_default = False
     _attr_translation_key = "door_lock_rule"
 
     def __init__(self, coordinator: UnifiAccessCoordinator[dict[str, DoorState]], door_id: str) -> None:
@@ -59,7 +58,6 @@ class TemporaryLockRuleEndTimeSensorEntity(UnifiAccessDoorEntity, SensorEntity):
 
     _attr_device_class = SensorDeviceClass.TIMESTAMP
     _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_entity_registry_enabled_default = False
     _attr_translation_key = "door_lock_rule_ended_time"
 
     def __init__(self, coordinator: UnifiAccessCoordinator[dict[str, DoorState]], door_id: str) -> None:
