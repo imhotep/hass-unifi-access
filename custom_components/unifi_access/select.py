@@ -39,14 +39,10 @@ class TemporaryLockRuleSelectEntity(UnifiAccessDoorEntity, SelectEntity):
         self._attr_unique_id = f"door_lock_rule_{door_id}"
         self._update_options()
 
-    @property
-    def current_option(self) -> str:
-        """Get current option."""
-        return self.door.lock_rule
-
     def _update_options(self) -> None:
         """Update Door Lock Rules without duplications."""
-        self._attr_current_option = self.coordinator.data[self.door.id].lock_rule
+        lock_rule = self.coordinator.data[self.door.id].lock_rule
+        self._attr_current_option = "" if lock_rule == "reset" else lock_rule
 
         base_options = [
             "",
@@ -66,6 +62,9 @@ class TemporaryLockRuleSelectEntity(UnifiAccessDoorEntity, SelectEntity):
         if not option:
             return
         await self._data.hub.async_set_lock_rule(self.door.id, option)
+        if option == "reset":
+            self._attr_current_option = ""
+            self.async_write_ha_state()
 
     def _handle_coordinator_update(self) -> None:
         """Handle Unifi Access Door Lock updates from coordinator."""

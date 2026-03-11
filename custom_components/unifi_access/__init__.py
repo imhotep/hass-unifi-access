@@ -46,15 +46,17 @@ async def async_setup_entry(
 ) -> bool:
     """Set up Unifi Access from a config entry."""
     session = async_get_clientsession(hass, verify_ssl=entry.data["verify_ssl"])
-    ssl_context = ssl_util.client_context()
 
-    client = UnifiAccessApiClient(
-        host=entry.data["host"],
-        api_token=entry.data["api_token"],
-        session=session,
-        verify_ssl=entry.data["verify_ssl"],
-        ssl_context=ssl_context,
-    )
+    client_kwargs = {
+        "host": entry.data["host"],
+        "api_token": entry.data["api_token"],
+        "session": session,
+        "verify_ssl": entry.data["verify_ssl"],
+    }
+    if entry.data["verify_ssl"]:
+        client_kwargs["ssl_context"] = ssl_util.client_context()
+
+    client = UnifiAccessApiClient(**client_kwargs)
 
     hub = UnifiAccessHub(client, use_polling=entry.data["use_polling"])
 
