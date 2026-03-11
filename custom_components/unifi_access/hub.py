@@ -11,6 +11,7 @@ from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 import logging
+import time
 from typing import Any
 import unicodedata
 
@@ -30,6 +31,7 @@ from unifi_access_api import (
     LocationUpdateLegacy,
     LocationUpdateV2,
     LogAdd,
+    RemoteUnlock,
     RemoteView,
     RemoteViewChange,
     SettingUpdate,
@@ -147,6 +149,10 @@ class UnifiAccessHub:
         self.lockdown: bool = False
         self.supports_door_lock_rules: bool = True
 
+        # Dedup: track last insights.add timestamp per door to suppress
+        # redundant logs.add events when a hub sends both.
+        self._last_insight_time: dict[str, float] = {}
+
         # Set by __init__.py after coordinator creation to push WS updates.
         self.on_doors_updated: Callable[[], None] | None = None
         self.on_emergency_updated: Callable[[], None] | None = None
@@ -257,6 +263,7 @@ class UnifiAccessHub:
             "access.logs.add": self._handle_logs_add,
             "access.hw.door_bell": self._handle_hw_door_bell,
             "access.data.setting.update": self._handle_settings_update,
+            "access.data.device.remote_unlock": self._handle_remote_unlock,
         }
         self.client.start_websocket(
             handlers,
@@ -306,10 +313,10 @@ class UnifiAccessHub:
 
             if ws_state.remain_lock is not None:
                 state.lock_rule = ws_state.remain_lock.type.value
-                state.lock_rule_ended_time = ws_state.remain_lock.ended_time
+                state.lock_rule_ended_time = ws_state.remain_lock.until
             elif ws_state.remain_unlock is not None:
                 state.lock_rule = ws_state.remain_unlock.type.value
-                state.lock_rule_ended_time = ws_state.remain_unlock.ended_time
+                state.lock_rule_ended_time = ws_state.remain_unlock.until
 
         # Handle thumbnail
         if update.data.thumbnail is not None:
@@ -404,7 +411,11 @@ class UnifiAccessHub:
                 self._notify_doors_updated()
 
     async def _handle_logs_add(self, msg: WebsocketMessage) -> None:
-        """Handle access log messages (logging only, events via insights_add)."""
+        """Handle access log messages.
+
+        Fires access events as a fallback for hubs that send ``logs.add``
+        but not ``insights.add``.
+        """
         update: LogAdd = msg  # type: ignore[assignment]
         source = update.data.source
 
@@ -421,6 +432,38 @@ class UnifiAccessHub:
             source.actor.display_name,
             source.authentication.credential_provider,
         )
+
+        # Fire access events from logs.add as fallback — but skip if
+        # insights.add already fired for this door recently.
+        last_insight = self._last_insight_time.get(door_target.id, 0.0)
+        if time.monotonic() - last_insight < 5.0:
+            return
+
+        device_config = source.device_config
+        if device_config is None:
+            return
+
+        state = self.doors.get(door_target.id)
+        if state is None:
+            return
+
+        access_type = device_config.display_name.lower()
+        if access_type == "entry":
+            event_type = ACCESS_ENTRY_EVENT
+        elif access_type == "exit":
+            event_type = ACCESS_EXIT_EVENT
+        else:
+            event_type = ACCESS_GENERIC_EVENT
+
+        event_attributes = {
+            "door_name": state.name,
+            "door_id": state.id,
+            "actor": source.actor.display_name,
+            "authentication": source.authentication.credential_provider,
+            "type": event_type,
+            "result": source.event.result,
+        }
+        state.trigger_event("access", event_attributes)
 
     async def _handle_hw_door_bell(self, msg: WebsocketMessage) -> None:
         """Handle hardware doorbell press messages."""
@@ -460,6 +503,8 @@ class UnifiAccessHub:
 
         if self.create_task:
             self.create_task(_auto_stop())
+        else:
+            _LOGGER.warning("Cannot schedule doorbell auto-stop: create_task not set")
 
     async def _handle_insights_add(self, msg: WebsocketMessage) -> None:
         """Handle insights add (access entry/exit) events."""
@@ -496,6 +541,7 @@ class UnifiAccessHub:
             update.data.metadata.authentication.display_name,
             update.data.result,
         )
+        self._last_insight_time[door_id] = time.monotonic()
         state.trigger_event("access", event_attributes)
 
     async def _handle_v2_location_update(self, msg: WebsocketMessage) -> None:
@@ -511,6 +557,14 @@ class UnifiAccessHub:
         if ws_state is not None:
             self._apply_lock_dps(state, dps=ws_state.dps, lock=ws_state.lock)
 
+            # Lock rules
+            if ws_state.remain_lock is not None:
+                state.lock_rule = ws_state.remain_lock.type.value
+                state.lock_rule_ended_time = ws_state.remain_lock.until
+            elif ws_state.remain_unlock is not None:
+                state.lock_rule = ws_state.remain_unlock.type.value
+                state.lock_rule_ended_time = ws_state.remain_unlock.until
+
         # Handle thumbnail
         if update.data.thumbnail is not None:
             thumb_url = update.data.thumbnail.url
@@ -523,11 +577,12 @@ class UnifiAccessHub:
                 _LOGGER.debug("Failed to fetch thumbnail for door %s", door_id)
 
         _LOGGER.info(
-            "V2 location update door %s (%s): locked=%s dps=%s",
+            "V2 location update door %s (%s): locked=%s dps=%s rule=%s",
             state.name,
             state.id,
             state.door_lock_relay_status,
             state.door_position_status,
+            state.lock_rule,
         )
         self._notify_doors_updated()
 
@@ -549,6 +604,15 @@ class UnifiAccessHub:
                 state.hub_id = device_id
 
             self._apply_lock_dps(state, dps=loc_state.dps, lock=loc_state.lock)
+
+            # Lock rules
+            if loc_state.remain_lock is not None:
+                state.lock_rule = loc_state.remain_lock.type.value
+                state.lock_rule_ended_time = loc_state.remain_lock.until
+            elif loc_state.remain_unlock is not None:
+                state.lock_rule = loc_state.remain_unlock.type.value
+                state.lock_rule_ended_time = loc_state.remain_unlock.until
+
             updated = True
 
         _LOGGER.debug(
@@ -616,3 +680,18 @@ class UnifiAccessHub:
             self.lockdown,
         )
         self._notify_emergency_updated()
+
+    async def _handle_remote_unlock(self, msg: WebsocketMessage) -> None:
+        """Handle remote door unlock messages."""
+        update: RemoteUnlock = msg  # type: ignore[assignment]
+        door_id = update.data.unique_id
+
+        state = self.doors.get(door_id)
+        if state is None:
+            return
+
+        state.door = state.door.with_updates(
+            door_lock_relay_status=DoorLockRelayStatus.UNLOCK
+        )
+        _LOGGER.info("Remote unlock on %s (%s)", state.name, state.id)
+        self._notify_doors_updated()
