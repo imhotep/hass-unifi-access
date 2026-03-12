@@ -311,6 +311,8 @@ class UnifiAccessHub:
         if ws_state is not None:
             self._apply_lock_dps(state, dps=ws_state.dps, lock=ws_state.lock)
 
+            state.lock_rule = ""
+            state.lock_rule_ended_time = 0
             if ws_state.remain_lock is not None:
                 state.lock_rule = ws_state.remain_lock.type.value
                 state.lock_rule_ended_time = ws_state.remain_lock.until
@@ -558,6 +560,8 @@ class UnifiAccessHub:
             self._apply_lock_dps(state, dps=ws_state.dps, lock=ws_state.lock)
 
             # Lock rules
+            state.lock_rule = ""
+            state.lock_rule_ended_time = 0
             if ws_state.remain_lock is not None:
                 state.lock_rule = ws_state.remain_lock.type.value
                 state.lock_rule_ended_time = ws_state.remain_lock.until
@@ -606,6 +610,8 @@ class UnifiAccessHub:
             self._apply_lock_dps(state, dps=loc_state.dps, lock=loc_state.lock)
 
             # Lock rules
+            state.lock_rule = ""
+            state.lock_rule_ended_time = 0
             if loc_state.remain_lock is not None:
                 state.lock_rule = loc_state.remain_lock.type.value
                 state.lock_rule_ended_time = loc_state.remain_lock.until

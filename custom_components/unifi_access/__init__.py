@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ssl
 from dataclasses import dataclass
 
 from homeassistant.config_entries import ConfigEntry
@@ -47,14 +48,18 @@ async def async_setup_entry(
     """Set up Unifi Access from a config entry."""
     session = async_get_clientsession(hass, verify_ssl=entry.data["verify_ssl"])
 
+    ssl_context: ssl.SSLContext | bool = False
+    if entry.data["verify_ssl"]:
+        # SSL context creation may call into blocking cert-loading functions.
+        ssl_context = await hass.async_add_executor_job(ssl_util.client_context)
+
     client_kwargs = {
         "host": entry.data["host"],
         "api_token": entry.data["api_token"],
         "session": session,
         "verify_ssl": entry.data["verify_ssl"],
+        "ssl_context": ssl_context,
     }
-    if entry.data["verify_ssl"]:
-        client_kwargs["ssl_context"] = ssl_util.client_context()
 
     client = UnifiAccessApiClient(**client_kwargs)
 

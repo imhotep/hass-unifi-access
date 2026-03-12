@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -521,6 +522,9 @@ class TestHubWebSocketHandlers:
         hub.doors["door-001"].add_event_listener(
             "access", lambda e, a: events_received.append(a)
         )
+
+        # Simulate a recent insights.add so logs.add is suppressed
+        hub._last_insight_time["door-001"] = time.monotonic()
 
         await hub._handle_logs_add(msg)
 
