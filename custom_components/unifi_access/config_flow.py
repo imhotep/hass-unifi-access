@@ -36,7 +36,7 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
     session = async_get_clientsession(hass, verify_ssl=data["verify_ssl"])
-    ssl_context = ssl_util.client_context()
+    ssl_context = ssl_util.client_context() if data["verify_ssl"] else None
     client = UnifiAccessApiClient(
         host=data["host"],
         api_token=data["api_token"],
