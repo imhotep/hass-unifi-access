@@ -60,10 +60,27 @@
         },
         "event": {
             "access_event": {
-                "name": "Zutritt"
+                "name": "Zutrittsereignis",
+                "state_attributes": {
+                    "event_type": {
+                        "state": {
+                            "unifi_access_entry": "Zutritt",
+                            "unifi_access_exit": "Austritt",
+                            "unifi_access_access": "Zugang"
+                        }
+                    }
+                }
             },
             "doorbell_event": {
-                "name": "Türklingel betätigt"
+                "name": "Türklingel betätigt",
+                "state_attributes": {
+                    "event_type": {
+                        "state": {
+                            "unifi_access_doorbell_start": "Klingel Start",
+                            "unifi_access_doorbell_stop": "Klingel Stop"
+                        }
+                    }
+                }
             }
         },
         "image": {

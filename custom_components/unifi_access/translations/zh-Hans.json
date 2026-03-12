@@ -60,10 +60,27 @@
         },
         "event": {
             "access_event": {
-                "name": "访问"
+                "name": "门事件",
+                "state_attributes": {
+                    "event_type": {
+                        "state": {
+                            "unifi_access_entry": "进入",
+                            "unifi_access_exit": "退出",
+                            "unifi_access_access": "访问"
+                        }
+                    }
+                }
             },
             "doorbell_event": {
-                "name": "门铃按下"
+                "name": "门铃按压",
+                "state_attributes": {
+                    "event_type": {
+                        "state": {
+                            "unifi_access_doorbell_start": "门铃开始",
+                            "unifi_access_doorbell_stop": "门铃停止"
+                        }
+                    }
+                }
             }
         },
         "image": {

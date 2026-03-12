@@ -60,10 +60,27 @@
         },
         "event": {
             "access_event": {
-                "name": "Toegang"
+                "name": "Deur Gebeurtenis",
+                "state_attributes": {
+                    "event_type": {
+                        "state": {
+                            "unifi_access_entry": "Toegang",
+                            "unifi_access_exit": "Uitgang",
+                            "unifi_access_access": "Toegang"
+                        }
+                    }
+                }
             },
             "doorbell_event": {
-                "name": "Deurbel Drukken"
+                "name": "Deurbel",
+                "state_attributes": {
+                    "event_type": {
+                        "state": {
+                            "unifi_access_doorbell_start": "Deurbel Start",
+                            "unifi_access_doorbell_stop": "Deurbel Stop"
+                        }
+                    }
+                }
             }
         },
         "image": {

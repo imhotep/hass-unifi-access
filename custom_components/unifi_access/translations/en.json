@@ -60,10 +60,27 @@
         },
         "event": {
             "access_event": {
-                "name": "Access"
+                "name": "Door Event",
+                "state_attributes": {
+                    "event_type": {
+                        "state": {
+                            "unifi_access_entry": "Entry",
+                            "unifi_access_exit": "Exit",
+                            "unifi_access_access": "Access"
+                        }
+                    }
+                }
             },
             "doorbell_event": {
-                "name": "Doorbell Press"
+                "name": "Doorbell Press",
+                "state_attributes": {
+                    "event_type": {
+                        "state": {
+                            "unifi_access_doorbell_start": "Doorbell Start",
+                            "unifi_access_doorbell_stop": "Doorbell Stop"
+                        }
+                    }
+                }
             }
         },
         "image": {

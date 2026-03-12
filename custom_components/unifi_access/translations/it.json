@@ -60,10 +60,27 @@
         },
         "event": {
             "access_event": {
-                "name": "Accesso"
+                "name": "Evento Porta",
+                "state_attributes": {
+                    "event_type": {
+                        "state": {
+                            "unifi_access_entry": "Ingresso",
+                            "unifi_access_exit": "Uscita",
+                            "unifi_access_access": "Accesso"
+                        }
+                    }
+                }
             },
             "doorbell_event": {
-                "name": "Campanello premuto"
+                "name": "Campanello",
+                "state_attributes": {
+                    "event_type": {
+                        "state": {
+                            "unifi_access_doorbell_start": "Campanello Inizio",
+                            "unifi_access_doorbell_stop": "Campanello Fine"
+                        }
+                    }
+                }
             }
         },
         "image": {
