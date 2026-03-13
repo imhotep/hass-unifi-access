@@ -1,73 +1,73 @@
 """Platform for switch integration."""
 
-import logging
 from typing import Any
 
-from propcache.api import cached_property
-
 from homeassistant.components.switch import SwitchEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from unifi_access_api import EmergencyStatus
 
+from . import UnifiAccessConfigEntry
 from .const import DOMAIN
-from .coordinator import UnifiAccessEvacuationAndLockdownSwitchCoordinator
+from .coordinator import UnifiAccessCoordinator
 from .hub import UnifiAccessHub
 
-_LOGGER = logging.getLogger(__name__)
+PARALLEL_UPDATES = 1
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    config_entry: UnifiAccessConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Add switch entity for passed config entry."""
-    hub: UnifiAccessHub = hass.data[DOMAIN][config_entry.entry_id]
-
-    coordinator: UnifiAccessEvacuationAndLockdownSwitchCoordinator = (
-        UnifiAccessEvacuationAndLockdownSwitchCoordinator(hass, config_entry, hub)
-    )
-
-    await coordinator.async_config_entry_first_refresh()
-
+    data = config_entry.runtime_data
     async_add_entities(
         [
-            EvacuationSwitch(hass, hub, coordinator),
-            LockdownSwitch(hass, hub, coordinator),
+            EmergencySwitch(
+                data.hub,
+                data.emergency_coordinator,
+                field="evacuation",
+                unique_id="unifi_access_all_doors_evacuation",
+                translation_key="evacuation",
+            ),
+            EmergencySwitch(
+                data.hub,
+                data.emergency_coordinator,
+                field="lockdown",
+                unique_id="unifi_access_all_doors_lockdown",
+                translation_key="lockdown",
+            ),
         ]
     )
 
 
-class EvacuationSwitch(CoordinatorEntity, SwitchEntity):
-    """Unifi Access Evacuation Switch."""
+class EmergencySwitch(CoordinatorEntity, SwitchEntity):
+    """Unifi Access Emergency Switch (Evacuation / Lockdown)."""
 
-    _attr_translation_key = "evacuation"
     _attr_has_entity_name = True
-
-    @cached_property
-    def should_poll(self) -> bool:
-        """Return whether entity should be polled."""
-        return False
 
     def __init__(
         self,
-        hass: HomeAssistant,
         hub: UnifiAccessHub,
-        coordinator: UnifiAccessEvacuationAndLockdownSwitchCoordinator,
+        coordinator: UnifiAccessCoordinator[EmergencyStatus],
+        *,
+        field: str,
+        unique_id: str,
+        translation_key: str,
     ) -> None:
-        """Initialize Unifi Access Evacuation Switch."""
-        super().__init__(coordinator, context="evacuation")
-        self.hass = hass
+        """Initialize Unifi Access Emergency Switch."""
+        super().__init__(coordinator, context=field)
         self.hub = hub
-        self._is_on = self.hub.evacuation
-        self._attr_unique_id = "unifi_access_all_doors_evacuation"
+        self._field = field
+        self._attr_unique_id = unique_id
+        self._attr_translation_key = translation_key
 
     @property
     def device_info(self) -> DeviceInfo:
-        """Get Unifi Access Evacuation Switch device information."""
+        """Get device information."""
         return DeviceInfo(
             identifiers={(DOMAIN, "unifi_access_all_doors")},
             name="All Doors",
@@ -77,100 +77,13 @@ class EvacuationSwitch(CoordinatorEntity, SwitchEntity):
 
     @property
     def is_on(self) -> bool:
-        """Get Unifi Access Evacuation Switch status."""
-        return self.hub.evacuation
+        """Get switch status."""
+        return bool(getattr(self.hub, self._field))
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        "Turn off Evacuation."
-        await self.hass.async_add_executor_job(
-            self.hub.set_doors_emergency_status, {"evacuation": False}
-        )
+        """Turn off emergency mode."""
+        await self.hub.async_set_emergency_status(**{self._field: False})
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        "Turn off Evacuation."
-        await self.hass.async_add_executor_job(
-            self.hub.set_doors_emergency_status, {"evacuation": True}
-        )
-
-    def _handle_coordinator_update(self) -> None:
-        """Handle Unifi Access Evacuation Switch updates from coordinator."""
-        self._attr_is_on = self.hub.evacuation
-        self.async_write_ha_state()
-
-    async def async_added_to_hass(self) -> None:
-        """Add Unifi Access Evacuation Switch to Home Assistant."""
-        await super().async_added_to_hass()
-        self.hub.register_callback(self.async_write_ha_state)
-
-    async def async_will_remove_from_hass(self) -> None:
-        """Remove Unifi Access Evacuation Switch from Home Assistant."""
-        await super().async_will_remove_from_hass()
-        self.hub.remove_callback(self.async_write_ha_state)
-
-
-class LockdownSwitch(CoordinatorEntity, SwitchEntity):
-    """Unifi Access Lockdown Switch."""
-
-    _attr_translation_key = "lockdown"
-    _attr_has_entity_name = True
-
-    @cached_property
-    def should_poll(self) -> bool:
-        """Return whether entity should be polled."""
-        return False
-
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        hub: UnifiAccessHub,
-        coordinator: UnifiAccessEvacuationAndLockdownSwitchCoordinator,
-    ) -> None:
-        """Initialize Unifi Access Lockdown Switch."""
-        super().__init__(coordinator, context="lockdown")
-        self.hass = hass
-        self.hub = hub
-        self.coordinator = coordinator
-        self._attr_unique_id = "unifi_access_all_doors_lockdown"
-        self._is_on = self.hub.lockdown
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Get Unifi Access Lockdown Switch device information."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, "unifi_access_all_doors")},
-            name="All Doors",
-            model="UAH",
-            manufacturer="Unifi",
-        )
-
-    @property
-    def is_on(self) -> bool:
-        """Get Unifi Access Lockdown Switch status."""
-        return self.hub.lockdown
-
-    async def async_turn_off(self, **kwargs: Any) -> None:
-        "Turn off Evacuation."
-        await self.hass.async_add_executor_job(
-            self.hub.set_doors_emergency_status, {"lockdown": False}
-        )
-
-    async def async_turn_on(self, **kwargs: Any) -> None:
-        "Turn off Evacuation."
-        await self.hass.async_add_executor_job(
-            self.hub.set_doors_emergency_status, {"lockdown": True}
-        )
-
-    def _handle_coordinator_update(self) -> None:
-        """Handle Unifi Access Lockdown Switch updates from coordinator."""
-        self._attr_is_on = self.hub.lockdown
-        self.async_write_ha_state()
-
-    async def async_added_to_hass(self) -> None:
-        """Add Unifi Access Lockdown Switch to Home Assistant."""
-        await super().async_added_to_hass()
-        self.hub.register_callback(self.async_write_ha_state)
-
-    async def async_will_remove_from_hass(self) -> None:
-        """Remove Unifi Access Lockdown Switch from Home Assistant."""
-        await super().async_will_remove_from_hass()
-        self.hub.remove_callback(self.async_write_ha_state)
+        """Turn on emergency mode."""
+        await self.hub.async_set_emergency_status(**{self._field: True})

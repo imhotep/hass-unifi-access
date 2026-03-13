@@ -106,6 +106,13 @@ mode: single
 # API Limitations
 The Unifi Access API does *NOT* support door locking at the moment. You probably already have it set to automatically lock after a small delay anyway.
 
+# Removing the integration
+1. Go to **Settings → Devices & Services → Unifi Access**
+2. Click on the three-dot menu (⋮) on the integration card
+3. Select **Delete**
+4. Restart Home Assistant
+5. If you installed via HACS you can also uninstall the repository from HACS afterwards
+
 # Wishlist
 - door code via service
 
