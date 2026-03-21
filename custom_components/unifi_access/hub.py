@@ -511,13 +511,20 @@ class UnifiAccessHub:
     async def _handle_insights_add(self, msg: WebsocketMessage) -> None:
         """Handle insights add (access entry/exit) events."""
         update: InsightsAdd = msg  # type: ignore[assignment]
-        door_id = update.data.metadata.door.id
+        door_entries = update.data.metadata.door
+        if not door_entries:
+            _LOGGER.debug("Ignoring insights event without door metadata: %s", update)
+            return
+        door_id = door_entries[0].id
 
         state = self.doors.get(door_id)
         if state is None:
             return
 
-        direction = update.data.metadata.opened_direction.display_name.lower()
+        direction_entries = update.data.metadata.opened_direction
+        direction = (
+            direction_entries[0].display_name.lower() if direction_entries else ""
+        )
         if direction == "entry":
             event_type = ACCESS_ENTRY_EVENT
         elif direction == "exit":
@@ -525,13 +532,16 @@ class UnifiAccessHub:
         else:
             event_type = ACCESS_GENERIC_EVENT
 
+        method_entries = update.data.metadata.opened_method
+        method = method_entries[0].display_name if method_entries else ""
+
         event_attributes = {
             "door_name": state.name,
             "door_id": state.id,
             "actor": update.data.metadata.actor.display_name,
             "authentication": update.data.metadata.authentication.display_name,
             "type": event_type,
-            "method": update.data.metadata.opened_method.display_name,
+            "method": method,
             "result": update.data.result,
         }
         _LOGGER.info(

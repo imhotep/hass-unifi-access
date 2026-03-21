@@ -311,11 +311,11 @@ class TestHubWebSocketHandlers:
     async def test_handle_insights_add(self, hub: UnifiAccessHub) -> None:
         """Test insights add handler triggers access event."""
         msg = MagicMock()
-        msg.data.metadata.door.id = "door-001"
+        msg.data.metadata.door = [MagicMock(id="door-001")]
         msg.data.metadata.actor.display_name = "Raphael"
         msg.data.metadata.authentication.display_name = "FACE"
-        msg.data.metadata.opened_method.display_name = "face"
-        msg.data.metadata.opened_direction.display_name = "entry"
+        msg.data.metadata.opened_method = [MagicMock(display_name="face")]
+        msg.data.metadata.opened_direction = [MagicMock(display_name="entry")]
         msg.data.event_type = "access.door.unlock"
         msg.data.result = "ACCESS"
 
@@ -339,7 +339,7 @@ class TestHubWebSocketHandlers:
     ) -> None:
         """Ignore insights for unknown doors."""
         msg = MagicMock()
-        msg.data.metadata.door.id = "door-unknown"
+        msg.data.metadata.door = [MagicMock(id="door-unknown")]
         await hub._handle_insights_add(msg)
         hub.on_doors_updated.assert_not_called()
 
@@ -536,11 +536,11 @@ class TestHubWebSocketHandlers:
     ) -> None:
         """InsightsAdd with empty opened_direction should use generic event type."""
         msg = MagicMock()
-        msg.data.metadata.door.id = "door-001"
+        msg.data.metadata.door = [MagicMock(id="door-001")]
         msg.data.metadata.actor.display_name = "Test"
         msg.data.metadata.authentication.display_name = "NFC"
-        msg.data.metadata.opened_method.display_name = "nfc"
-        msg.data.metadata.opened_direction.display_name = ""
+        msg.data.metadata.opened_method = [MagicMock(display_name="nfc")]
+        msg.data.metadata.opened_direction = [MagicMock(display_name="")]
         msg.data.event_type = "access.door.unlock"
         msg.data.result = "ACCESS"
 
@@ -560,11 +560,11 @@ class TestHubWebSocketHandlers:
     ) -> None:
         """InsightsAdd with unexpected direction should use generic event type."""
         msg = MagicMock()
-        msg.data.metadata.door.id = "door-001"
+        msg.data.metadata.door = [MagicMock(id="door-001")]
         msg.data.metadata.actor.display_name = "Test"
         msg.data.metadata.authentication.display_name = "NFC"
-        msg.data.metadata.opened_method.display_name = "nfc"
-        msg.data.metadata.opened_direction.display_name = "denied"
+        msg.data.metadata.opened_method = [MagicMock(display_name="nfc")]
+        msg.data.metadata.opened_direction = [MagicMock(display_name="denied")]
         msg.data.event_type = "access.door.unlock"
         msg.data.result = "ACCESS"
 
@@ -577,6 +577,17 @@ class TestHubWebSocketHandlers:
 
         assert len(events_received) == 1
         assert events_received[0]["type"] == "unifi_access_access"
+
+    async def test_handle_insights_add_missing_door_metadata(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """InsightsAdd without door metadata should be ignored."""
+        msg = MagicMock()
+        msg.data.metadata.door = []
+
+        await hub._handle_insights_add(msg)
+
+        hub.on_doors_updated.assert_not_called()
 
     async def test_apply_lock_dps(self, hub: UnifiAccessHub) -> None:
         """Test the _apply_lock_dps helper updates door state."""
