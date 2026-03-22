@@ -511,27 +511,29 @@ class UnifiAccessHub:
         if not door_entries:
             _LOGGER.debug("Ignoring insights event without door metadata: %s", update)
             return
-        door_id = door_entries[0].id
-        state = self.doors.get(door_id)
+        reported_door_id = door_entries[0].id
+        state = self.doors.get(reported_door_id)
         if state is None:
             _LOGGER.debug(
                 "Potential buggy version of unifi access api detected - looking for door by hub id %s",
-                door_id,
+                reported_door_id,
             )
             state = next(
                 (
                     door
                     for door in self.doors.values()
-                    if getattr(door, "hub_id", None) == door_id
+                    if getattr(door, "hub_id", None) == reported_door_id
                 ),
                 None,
             )
             if state is None:
                 _LOGGER.warning(
                     "Could not find door for insights event with door id %s (or hub id)",
-                    door_id,
+                    reported_door_id,
                 )
                 return
+
+        canonical_door_id = state.id
 
         direction_entries = update.data.metadata.opened_direction
         direction = (
@@ -565,7 +567,7 @@ class UnifiAccessHub:
             update.data.metadata.authentication.display_name,
             update.data.result,
         )
-        self._last_insight_time[door_id] = time.monotonic()
+        self._last_insight_time[canonical_door_id] = time.monotonic()
         state.trigger_event("access", event_attributes)
 
     async def _handle_v2_location_update(self, msg: WebsocketMessage) -> None:

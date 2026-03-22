@@ -369,6 +369,42 @@ class TestHubWebSocketHandlers:
         assert events_received[0][1]["door_id"] == "door-001"
         assert events_received[0][1]["door_name"] == "Front Door"
         assert events_received[0][1]["type"] == "unifi_access_entry"
+        assert "door-001" in hub._last_insight_time
+        hub.on_doors_updated.assert_not_called()
+
+    async def test_handle_logs_add_suppressed_after_insight_hub_id_fallback(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """logs.add should be suppressed when insights.add resolved the door via hub_id."""
+        hub.doors["door-001"].hub_id = "hub-001"
+
+        insight_msg = MagicMock()
+        insight_msg.data.metadata.door = [MagicMock(id="hub-001")]
+        insight_msg.data.metadata.actor.display_name = "Raphael"
+        insight_msg.data.metadata.authentication.display_name = "FACE"
+        insight_msg.data.metadata.opened_method = [MagicMock(display_name="face")]
+        insight_msg.data.metadata.opened_direction = [MagicMock(display_name="entry")]
+        insight_msg.data.event_type = "access.door.unlock"
+        insight_msg.data.result = "ACCESS"
+
+        log_msg = MagicMock()
+        log_msg.data.source.target = [MagicMock(type="door", id="door-001")]
+        log_msg.data.source.actor.display_name = "Raphael"
+        log_msg.data.source.event.result = "ACCESS"
+        log_msg.data.source.authentication.credential_provider = "FACE"
+        log_msg.data.source.device_config.display_name = "entry"
+
+        events_received = []
+        hub.doors["door-001"].add_event_listener(
+            "access", lambda e, a: events_received.append(a)
+        )
+
+        await hub._handle_insights_add(insight_msg)
+        await hub._handle_logs_add(log_msg)
+
+        assert len(events_received) == 1
+        assert "door-001" in hub._last_insight_time
+        assert "hub-001" not in hub._last_insight_time
         hub.on_doors_updated.assert_not_called()
 
     async def test_handle_v2_location_update(self, hub: UnifiAccessHub) -> None:
