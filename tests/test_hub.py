@@ -343,6 +343,34 @@ class TestHubWebSocketHandlers:
         await hub._handle_insights_add(msg)
         hub.on_doors_updated.assert_not_called()
 
+    async def test_handle_insights_add_falls_back_to_hub_id(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """InsightsAdd should resolve a door by hub_id when metadata uses the hub id."""
+        hub.doors["door-001"].hub_id = "hub-001"
+
+        msg = MagicMock()
+        msg.data.metadata.door = [MagicMock(id="hub-001")]
+        msg.data.metadata.actor.display_name = "Raphael"
+        msg.data.metadata.authentication.display_name = "FACE"
+        msg.data.metadata.opened_method = [MagicMock(display_name="face")]
+        msg.data.metadata.opened_direction = [MagicMock(display_name="entry")]
+        msg.data.event_type = "access.door.unlock"
+        msg.data.result = "ACCESS"
+
+        events_received = []
+        hub.doors["door-001"].add_event_listener(
+            "access", lambda e, a: events_received.append((e, a))
+        )
+
+        await hub._handle_insights_add(msg)
+
+        assert len(events_received) == 1
+        assert events_received[0][1]["door_id"] == "door-001"
+        assert events_received[0][1]["door_name"] == "Front Door"
+        assert events_received[0][1]["type"] == "unifi_access_entry"
+        hub.on_doors_updated.assert_not_called()
+
     async def test_handle_v2_location_update(self, hub: UnifiAccessHub) -> None:
         """Test V2 location update handler."""
         msg = MagicMock()

@@ -187,9 +187,7 @@ class UnifiAccessHub:
                 state.lock_rule = rule_status.type.value
                 state.lock_rule_ended_time = rule_status.ended_time
             except ApiNotFoundError:
-                _LOGGER.debug(
-                    "Door lock rules not supported for door %s", door_id
-                )
+                _LOGGER.debug("Door lock rules not supported for door %s", door_id)
                 self.supports_door_lock_rules = False
                 break
         return self.doors
@@ -421,9 +419,7 @@ class UnifiAccessHub:
         update: LogAdd = msg  # type: ignore[assignment]
         source = update.data.source
 
-        door_target = next(
-            (t for t in source.target if t.type == "door"), None
-        )
+        door_target = next((t for t in source.target if t.type == "door"), None)
         if door_target is None:
             return
 
@@ -516,10 +512,26 @@ class UnifiAccessHub:
             _LOGGER.debug("Ignoring insights event without door metadata: %s", update)
             return
         door_id = door_entries[0].id
-
         state = self.doors.get(door_id)
         if state is None:
-            return
+            _LOGGER.debug(
+                "Potential buggy version of unifi access api detected - looking for door by hub id %s",
+                door_id,
+            )
+            state = next(
+                (
+                    door
+                    for door in self.doors.values()
+                    if getattr(door, "hub_id", None) == door_id
+                ),
+                None,
+            )
+            if state is None:
+                _LOGGER.warning(
+                    "Could not find door for insights event with door id %s (or hub id)",
+                    door_id,
+                )
+                return
 
         direction_entries = update.data.metadata.opened_direction
         direction = (
@@ -641,9 +653,7 @@ class UnifiAccessHub:
         if updated:
             self._notify_doors_updated()
 
-    async def _handle_location_update_legacy(
-        self, msg: WebsocketMessage
-    ) -> None:
+    async def _handle_location_update_legacy(self, msg: WebsocketMessage) -> None:
         """Handle legacy (V1) location update messages."""
         update: LocationUpdateLegacy = msg  # type: ignore[assignment]
         door_id = update.data.unique_id
@@ -659,18 +669,14 @@ class UnifiAccessHub:
             thumb_ts = extras.get("door_thumbnail_last_update")
             if thumb_url and isinstance(thumb_url, str):
                 try:
-                    state.thumbnail = await self.client.get_thumbnail(
-                        thumb_url
-                    )
+                    state.thumbnail = await self.client.get_thumbnail(thumb_url)
                     if thumb_ts is not None:
                         state.thumbnail_last_updated = datetime.fromtimestamp(
                             int(thumb_ts), tz=UTC
                         )
                     updated = True
                 except (ApiError, TimeoutError, ValueError):
-                    _LOGGER.debug(
-                        "Failed to fetch thumbnail for door %s", door_id
-                    )
+                    _LOGGER.debug("Failed to fetch thumbnail for door %s", door_id)
 
         _LOGGER.debug(
             "Legacy location update door %s (%s)",
