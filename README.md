@@ -30,7 +30,7 @@
     - Door Position Sensor (binary_sensor). If you don't have one connected, it will always be **off** (closed).
     - Doorbell Pressed (binary_sensor). Requires **Unifi Access Reader Pro G1/G2** otherwise always **off**. Only appears when **Use polling** is not selected!
     - Door Lock (lock). This will not show up immediately under the device but it should show up after a while. You can unlock (but not lock) a door
-    - Event entities: Access and Doorbell Press
+    - Event entities (`event`): Door Event and Doorbell Press. These are only created when `Use polling` is not selected.
 
 
 # Installation (manual)
@@ -46,29 +46,44 @@
     - Door Position Sensor (binary_sensor). If you don't have one connected, it will always be **off** (closed).
     - Doorbell Pressed (binary_sensor). Requires **Unifi Access Reader Pro G1/G2** otherwise always **off**. Only appears when **Use polling** is not selected!
     - Door Lock (lock). This will not show up immediately under the device but it should show up after a while. You can unlock (but not lock) a door
-    - Event entities: Access and Doorbell Press
+    - Event entities (`event`): Door Event and Doorbell Press. These are only created when `Use polling` is not selected.
 
 # Events
-This integration currently supports two type of events
+When websocket mode is enabled (`Use polling` is **not** selected), this integration creates two Home Assistant `event` entities for each door:
 
-## Doorbell Press Event
-An entity will get created for each door. Every time the doorbell is pressed there will be a `unifi_access_doorbell_start` event that will be received by this entity with some metadata. The same event will also be fired on the Home Assistant Event Bus. You can listen to it via the Developer Tools. When the doorbell is either answered or canceled there will be a `unifi_access_doorbell_stop` event.
+- `Door Event`
+- `Doorbell Press`
+
+## Doorbell Press
+One `Doorbell Press` entity is created per door. It updates when the integration receives a doorbell start or stop event.
+
+### Event types
+- `unifi_access_doorbell_start`
+- `unifi_access_doorbell_stop`
 
 ### Event metadata
-- door_name
-- door_id
-- type # `unifi_access_doorbell_start` or `unifi_access_doorbell_stop`
+- `door_name`
+- `door_id`
+- `type`
 
-## Access
-An entity will get created for each door. Every time a door is accessed (entry, exit, app, api) there will be a `unifi_access_entry` or `unifi_access_exit` event that will be received by this entity with some metadata. The same event will also be fired on the Home Assistant Event Bus. You can listen to it via the Developer Tools.
+For hardware doorbells, the integration may emit `unifi_access_doorbell_stop` automatically after a short delay if no explicit stop event is received.
+
+## Door Event
+One `Door Event` entity is created per door. It updates whenever the integration receives an access event for that door.
+
+### Event types
+- `unifi_access_entry`
+- `unifi_access_exit`
+- `unifi_access_access` (generic access event when the controller does not provide a clear entry/exit direction)
 
 ### Event metadata
-- door_name
-- door_id
-- authentication # this is the method used to initiate the event ("REMOTE_THROUGH_UAH" , "NFC" , "MOBILE_TAP" , "PIN_CODE")
-- actor # this is the name of the user that accessed the door. If set to N/A that means UNAUTHORIZED ACCESS! In some cases actor may still be set. Check the result value. 
-- type # `unifi_access_entry` or `unifi_access_exit`
-- result # the result of the entry/exit event ("ACCESS" , "BLOCKED" , "INCOMPLETE") There may be other values.
+- `door_name`
+- `door_id`
+- `actor` # the user tied to the event, when available
+- `authentication` # authentication source reported by the controller
+- `method` # opened method, when provided by the controller
+- `type`
+- `result` # examples: `ACCESS`, `BLOCKED`, `INCOMPLETE`
 
 ### Evacuation/Lockdown
 The evacuation (unlock all doors) and lockdown (lock all doors) switches apply to all doors and gates and **will sound the alarm** no matter which configuration you currently have in your terminal settings. The status will not update currently (known issue).
