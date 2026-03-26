@@ -443,7 +443,24 @@ class UnifiAccessHub:
 
         state = self.doors.get(door_target.id)
         if state is None:
-            return
+            _LOGGER.debug(
+                "Potential buggy version of unifi access api detected - looking for door by hub id %s",
+                door_target.id,
+            )
+            state = next(
+                (
+                    door
+                    for door in self.doors.values()
+                    if getattr(door, "hub_id", None) == door_target.id
+                ),
+                None,
+            )
+            if state is None:
+                _LOGGER.warning(
+                    "Could not find door for log event with door id %s (or hub id)",
+                    door_target.id,
+                )
+                return
 
         access_type = device_config.display_name.lower()
         if access_type == "entry":

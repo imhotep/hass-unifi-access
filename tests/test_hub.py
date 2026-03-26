@@ -570,6 +570,53 @@ class TestHubWebSocketHandlers:
         # Should not trigger any state updates
         hub.on_doors_updated.assert_not_called()
 
+    async def test_handle_logs_add_falls_back_to_hub_id(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """logs.add should resolve a door by hub_id when the reported id is a hub id."""
+        hub.doors["door-001"].hub_id = "hub-001"
+
+        msg = MagicMock()
+        msg.data.source.target = [MagicMock(type="door", id="hub-001")]
+        msg.data.source.actor.display_name = "Raphael"
+        msg.data.source.event.result = "ACCESS"
+        msg.data.source.authentication.credential_provider = "FACE"
+        msg.data.source.device_config.display_name = "entry"
+
+        events_received = []
+        hub.doors["door-001"].add_event_listener(
+            "access", lambda e, a: events_received.append(a)
+        )
+
+        await hub._handle_logs_add(msg)
+
+        assert len(events_received) == 1
+        assert events_received[0]["door_id"] == "door-001"
+        assert events_received[0]["door_name"] == "Front Door"
+        assert events_received[0]["type"] == "unifi_access_entry"
+        hub.on_doors_updated.assert_not_called()
+
+    async def test_handle_logs_add_unknown_door(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """logs.add for a door not found by id or hub_id should be silently dropped."""
+        msg = MagicMock()
+        msg.data.source.target = [MagicMock(type="door", id="door-unknown")]
+        msg.data.source.actor.display_name = "Test"
+        msg.data.source.event.result = "ACCESS"
+        msg.data.source.authentication.credential_provider = "NFC"
+
+        events_received = []
+        for door_state in hub.doors.values():
+            door_state.add_event_listener(
+                "access", lambda e, a: events_received.append(a)
+            )
+
+        await hub._handle_logs_add(msg)
+
+        assert len(events_received) == 0
+        hub.on_doors_updated.assert_not_called()
+
     async def test_handle_logs_add_logging_only(
         self, hub: UnifiAccessHub
     ) -> None:
