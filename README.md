@@ -130,9 +130,9 @@ alias: Announce person having opened a Unifi door
 description: ""
 triggers:
   - platform: event
-    event_type: unifi_access_entry
-  - platform: event
-    event_type: unifi_access_access
+    event_type: 
+      - unifi_access_entry
+      - unifi_access_access
 variables:
   actor: "{{ trigger.event.data.actor or 'Unknown' }}"
   door_name: "{{ trigger.event.data.door_name or 'Unknown' }}"
