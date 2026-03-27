@@ -123,18 +123,19 @@ mode: single
 
 ## Use event as automation trigger
 
-Listen to a door event entity and use the event data to send a notification whenever someone accesses a door.
+Listen to Unifi Access events and use the event data to send a notification whenever someone accesses a door.
 
 ```yaml
-alias: Announce person having opened the street door
+alias: Announce person having opened a Unifi door
 description: ""
 triggers:
-  - trigger: state
-    entity_id:
-      - event.front_door_unifi_door_event
+  - platform: event
+    event_type: unifi_access_entry
+  - platform: event
+    event_type: unifi_access_access
 variables:
-  actor: "{{ trigger.to_state.attributes.get('actor', 'Unknown') }}"
-  door_name: "{{ trigger.to_state.attributes.get('door_name', 'Unknown') }}"
+  actor: "{{ trigger.event.data.actor or 'Unknown' }}"
+  door_name: "{{ trigger.event.data.door_name or 'Unknown' }}"
 actions:
   - action: notify.mobile_app_my_phone
     data:
