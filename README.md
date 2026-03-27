@@ -101,9 +101,11 @@ You are able to select one of the following rules via the `input_select`:
 - **lock_early**: locks the door if it's currently on an unlock schedule.
 - **lock_now**: locks the door if it's currently on an unlock schedule OR if it's unlocked temporarily via a locking rule.
 
-# Example automation
+# Example automations
 
-```
+## Unlock door
+
+```yaml
 alias: Unlock Front Gate when motion is detected in Entryway
 description: ""
 trigger:
@@ -116,6 +118,29 @@ action:
     data: {}
     target:
       device_id: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+mode: single
+```
+
+## Use event as automation trigger
+
+Listen to Unifi Access events and use the event data to send a notification whenever someone accesses a door.
+
+```yaml
+alias: Announce person having opened a Unifi door
+description: ""
+triggers:
+  - platform: event
+    event_type: 
+      - unifi_access_entry
+      - unifi_access_access
+variables:
+  actor: "{{ trigger.event.data.actor or 'Unknown' }}"
+  door_name: "{{ trigger.event.data.door_name or 'Unknown' }}"
+actions:
+  - action: notify.mobile_app_my_phone
+    data:
+      title: Door opened
+      message: "{{ actor }} has opened {{ door_name }}."
 mode: single
 ```
 # API Limitations
