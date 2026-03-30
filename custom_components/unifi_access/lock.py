@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from homeassistant.components.lock import LockEntity, LockEntityFeature
@@ -12,6 +13,8 @@ from . import UnifiAccessConfigEntry, UnifiAccessData
 from .entity import UnifiAccessDoorEntity
 
 PARALLEL_UPDATES = 1
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -37,6 +40,10 @@ class UnifiDoorLockEntity(UnifiAccessDoorEntity, LockEntity):
         super().__init__(data.coordinator, data.coordinator.data[door_id])
         self._data = data
         self._attr_unique_id = self.door.id
+
+    async def async_lock(self, **kwargs: Any) -> None:
+        """Log that locking is unsupported."""
+        _LOGGER.warning("locking is unsupported")
 
     async def async_unlock(self, **kwargs: Any) -> None:
         """Unlock the door."""

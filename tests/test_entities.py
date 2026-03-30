@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from homeassistant.components.lock import DOMAIN as LOCK_DOMAIN, LockState
@@ -89,7 +90,6 @@ class TestLockPlatform:
         self, hass: HomeAssistant, setup_integration
     ) -> None:
         """Test that lock state reflects door lock relay status."""
-        # door-001 has door_lock_relay_status=LOCK, door-002 has UNLOCK
         lock_states = [s.state for s in hass.states.async_all() if s.domain == "lock"]
         assert LockState.LOCKED in lock_states
         assert LockState.UNLOCKED in lock_states
@@ -126,6 +126,30 @@ class TestLockPlatform:
             blocking=True,
         )
         mock_client.unlock_door.assert_called()
+
+    async def test_lock_unsupported_is_logged(
+        self,
+        hass: HomeAssistant,
+        setup_integration,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Calling lock should only log that locking is unsupported."""
+        _, mock_client = setup_integration
+        lock_entity = next(
+            s for s in hass.states.async_all() if s.domain == "lock"
+        )
+
+        caplog.set_level(logging.WARNING, logger="custom_components.unifi_access.lock")
+
+        await hass.services.async_call(
+            LOCK_DOMAIN,
+            "lock",
+            {"entity_id": lock_entity.entity_id},
+            blocking=True,
+        )
+
+        assert "locking is unsupported" in caplog.text
+        mock_client.unlock_door.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

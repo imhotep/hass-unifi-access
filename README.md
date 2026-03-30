@@ -29,7 +29,7 @@
 - It should find all of your doors and add the following entities for each one
     - Door Position Sensor (binary_sensor). If you don't have one connected, it will always be **off** (closed).
     - Doorbell Pressed (binary_sensor). Requires **Unifi Access Reader Pro G1/G2** otherwise always **off**. Only appears when **Use polling** is not selected!
-    - Door Lock (lock). This will not show up immediately under the device but it should show up after a while. You can unlock (but not lock) a door
+    - Door Lock (lock). You can unlock or open a door, but locking is unsupported and only logs a warning.
     - Event entities (`event`): Door Event and Doorbell Press. These are only created when `Use polling` is not selected.
 
 
@@ -45,7 +45,7 @@
 - It should find all of your doors and add the following entities for each one
     - Door Position Sensor (binary_sensor). If you don't have one connected, it will always be **off** (closed).
     - Doorbell Pressed (binary_sensor). Requires **Unifi Access Reader Pro G1/G2** otherwise always **off**. Only appears when **Use polling** is not selected!
-    - Door Lock (lock). This will not show up immediately under the device but it should show up after a while. You can unlock (but not lock) a door
+    - Door Lock (lock). You can unlock or open a door, but locking is unsupported and only logs a warning.
     - Event entities (`event`): Door Event and Doorbell Press. These are only created when `Use polling` is not selected.
 
 # Events
