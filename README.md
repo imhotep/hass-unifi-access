@@ -85,6 +85,9 @@ One `Door Event` entity is created per door. It updates whenever the integration
 - `type`
 - `result` # examples: `ACCESS`, `BLOCKED`, `INCOMPLETE`
 
+#### Warning regarding Door Events
+Door events are using an undocumented API. Sadly, in September 2025, the Unifi Access API introduced some bugs that we have worked around but these events are still not 100% reliable depending on your hub. I recommend using the [Alarm Manager webhooks](https://github.com/imhotep/hass-unifi-access/issues/185#issuecomment-3895814140) if you need a more reliable way to automate based on door events.
+
 ### Evacuation/Lockdown
 The evacuation (unlock all doors) and lockdown (lock all doors) switches apply to all doors and gates and **will sound the alarm** no matter which configuration you currently have in your terminal settings. The status will not update currently (known issue).
 
