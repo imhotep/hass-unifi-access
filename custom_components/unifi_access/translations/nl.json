@@ -47,6 +47,12 @@
         "number": {
             "door_lock_rule_interval": {
                 "name": "Regel Interval (min)"
+            },
+            "door_open_time": {
+                "name": "Deur open tijd"
+            },
+            "door_close_time": {
+                "name": "Deur sluit tijd"
             }
         },
         "select": {

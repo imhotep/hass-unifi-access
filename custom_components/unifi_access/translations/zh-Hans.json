@@ -47,6 +47,12 @@
         "number": {
             "door_lock_rule_interval": {
                 "name": "规则间隔（分钟）"
+            },
+            "door_open_time": {
+                "name": "门开启时间"
+            },
+            "door_close_time": {
+                "name": "门关闭时间"
             }
         },
         "select": {

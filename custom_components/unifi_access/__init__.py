@@ -57,18 +57,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await coordinator.async_config_entry_first_refresh()
     
-    # Set up storage for entity types
+    # Set up storage for entity types and timing configuration
     store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
     stored_data = await store.async_load() or {}
     hass.data[DOMAIN]["store"] = store
     hass.data[DOMAIN]["entity_types"] = stored_data.get("entity_types", {})
+    hass.data[DOMAIN]["door_timings"] = stored_data.get("door_timings", {})
     
-    # Restore entity types from storage
+    # Restore entity types and timings from storage
     for door_id, door in coordinator.data.items():
         if door_id in hass.data[DOMAIN]["entity_types"]:
             stored_type = hass.data[DOMAIN]["entity_types"][door_id]
             door.entity_type = DoorEntityType(stored_type)
             _LOGGER.debug("Door %s: Restored entity type %s", door.name, stored_type)
+        
+        # Initialize timing defaults if not present
+        if door_id not in hass.data[DOMAIN]["door_timings"]:
+            hass.data[DOMAIN]["door_timings"][door_id] = {
+                "open_time": 0,
+                "close_time": 0,
+            }
 
     hass.data[DOMAIN]["coordinator"] = coordinator
 

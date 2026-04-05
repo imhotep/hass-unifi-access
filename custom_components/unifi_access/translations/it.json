@@ -46,8 +46,12 @@
         },
         "number": {
             "door_lock_rule_interval": {
-                "name": "Intervallo della regola (min)"
-            }
+                "name": "Intervallo della regola (min)"            },
+            "door_open_time": {
+                "name": "Tempo di apertura porta"
+            },
+            "door_close_time": {
+                "name": "Tempo di chiusura porta"            }
         },
         "select": {
             "door_lock_rules": {
