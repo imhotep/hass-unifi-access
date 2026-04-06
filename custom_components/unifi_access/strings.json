@@ -1,14 +1,9 @@
 {
   "config": {
-    "step": {
-      "user": {
-        "data": {
-          "host": "[%key:common::config_flow::data::host%]",
-          "api_token": "[%key:common::config_flow::data::api_token%]",
-          "verify_ssl": "[%key:common::config_flow::data::verify_ssl%]",
-          "use_polling": "Use polling"
-        }
-      }
+    "abort": {
+      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",
+      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+      "reconfigure_successful": "[%key:common::config_flow::abort::reconfigure_successful%]"
     },
     "error": {
       "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
@@ -16,51 +11,76 @@
       "ssl_error": "Error validating SSL certificate",
       "unknown": "[%key:common::config_flow::error::unknown%]"
     },
-    "abort": {
-      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
+    "step": {
+      "user": {
+        "data": {
+          "api_token": "[%key:common::config_flow::data::api_token%]",
+          "host": "[%key:common::config_flow::data::host%]",
+          "use_polling": "Use polling",
+          "verify_ssl": "[%key:common::config_flow::data::verify_ssl%]"
+        },
+        "data_description": {
+          "host": "Hostname or IP address of the UniFi Access controller",
+          "api_token": "API token generated in the UniFi Access settings",
+          "verify_ssl": "Verify the SSL certificate of the controller",
+          "use_polling": "Use polling instead of websocket push updates"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate UniFi Access",
+        "description": "The API token for {host} is no longer valid. Please enter a new API token.",
+        "data": {
+          "api_token": "[%key:common::config_flow::data::api_token%]"
+        }
+      },
+      "reconfigure": {
+        "data": {
+          "api_token": "[%key:common::config_flow::data::api_token%]",
+          "host": "[%key:common::config_flow::data::host%]",
+          "use_polling": "Use polling",
+          "verify_ssl": "[%key:common::config_flow::data::verify_ssl%]"
+        },
+        "data_description": {
+          "host": "Hostname or IP address of the UniFi Access controller",
+          "api_token": "API token generated in the UniFi Access settings",
+          "verify_ssl": "Verify the SSL certificate of the controller",
+          "use_polling": "Use polling instead of websocket push updates"
+        }
+      }
     }
   },
   "entity": {
+    "binary_sensor": {
+      "access_door_dps": {
+        "name": "Door Position Sensor"
+      },
+      "doorbell_status": {
+        "name": "Doorbell"
+      }
+    },
     "event": {
       "access_event": {
-        "name": "Access"
-      },
-      "doorbell_event": {
-        "name": "Doorbell Press"
-      }
-    },
-    "sensor": {
-      "door_lock_rule": {
-        "name": "Door Lock Rule",
-        "state": {
-          "keep_lock": "Locked",
-          "keep_unlock": "Unlocked",
-          "custom": "Custom"
+        "name": "Door Event",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "unifi_access_entry": "Entry",
+              "unifi_access_exit": "Exit",
+              "unifi_access_access": "Access"
+            }
+          }
         }
       },
-      "door_lock_rule_ended_time": {
-        "name": "Rule End Time"
-      }
-    },
-    "number": {
-      "door_lock_rule_interval": {
-        "name": "Rule Interval (min)"
-      },
-      "door_open_time": {
-        "name": "Door Open Time"
-      },
-      "door_close_time": {
-        "name": "Door Close Time"
-      }
-    },
-    "lock": {
-      "access_door": {
-        "name": "{door_name}"
-      }
-    },
-    "cover": {
-      "access_cover": {
-        "name": "{door_name}"
+      "doorbell_event": {
+        "name": "Doorbell Press",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "unifi_access_doorbell_start": "Doorbell Start",
+              "unifi_access_doorbell_stop": "Doorbell Stop"
+            }
+          }
+        }
       }
     },
     "image": {
@@ -68,29 +88,42 @@
         "name": "Thumbnail"
       }
     },
-    "binary_sensor": {
-      "access_door_dps": {
-        "name": "Door Position Sensor"
+    "button": {
+      "clear_obstruction": {
+        "name": "Clear Obstruction"
       }
     },
-    "switch": {
-      "evacuation": {
-        "name": "Evacuation"
+    "cover": {
+      "access_cover": {
+        "name": "{door_name}"
+      }
+    },
+    "lock": {
+      "access_door": {
+        "name": "{door_name}"
+      }
+    },
+    "number": {
+      "door_lock_rule_interval": {
+        "name": "Rule Interval (min)"
       },
-      "lockdown": {
-        "name": "Lockdown"
+      "door_open_time": {
+        "name": "Opening Timeout"
+      },
+      "door_close_time": {
+        "name": "Closing Timeout"
       }
     },
     "select": {
       "door_lock_rules": {
         "name": "Door Lock Rule",
         "state": {
+          "custom": "Custom (set interval)",
           "keep_lock": "Keep it locked",
           "keep_unlock": "Keep it unlocked",
-          "custom": "Custom (set interval)",
-          "reset": "Reset rule",
           "lock_early": "Lock early",
-          "lock_now": "Lock now"
+          "lock_now": "Lock now",
+          "reset": "Reset rule"
         }
       },
       "entity_type": {
@@ -100,6 +133,27 @@
           "garage": "Garage Door",
           "gate": "Gate"
         }
+      }
+    },
+    "sensor": {
+      "door_lock_rule": {
+        "name": "Door Lock Rule",
+        "state": {
+          "custom": "Custom",
+          "keep_lock": "Locked",
+          "keep_unlock": "Unlocked"
+        }
+      },
+      "door_lock_rule_ended_time": {
+        "name": "Rule End Time"
+      }
+    },
+    "switch": {
+      "evacuation": {
+        "name": "Evacuation"
+      },
+      "lockdown": {
+        "name": "Lockdown"
       }
     }
   }

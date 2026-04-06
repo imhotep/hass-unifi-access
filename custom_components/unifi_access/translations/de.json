@@ -1,11 +1,13 @@
 {
     "config": {
         "abort": {
-            "already_configured": "Das Gerät wurde bereits konfiguriert"
+            "already_configured": "Das Gerät wurde bereits konfiguriert",
+            "reauth_successful": "Erneute Authentifizierung war erfolgreich",
+            "reconfigure_successful": "Neukonfiguration war erfolgreich"
         },
         "error": {
             "cannot_connect": "Verbindung fehlgeschlagen",
-            "invalid_api_key": "Üngültiger API-Schlüssel",
+            "invalid_api_key": "Ungültiger API-Schlüssel",
             "ssl_error": "Fehler bei der Überprüfung des SSL-Zertifikats",
             "unknown": "Unerwarteter Fehler"
         },
@@ -16,6 +18,33 @@
                     "host": "Host",
                     "use_polling": "Intervallbasierte Abfrage",
                     "verify_ssl": "SSL-Zertifikat überprüfen"
+                },
+                "data_description": {
+                    "host": "Hostname oder IP-Adresse des UniFi Access Controllers",
+                    "api_token": "API-Token aus den UniFi Access Einstellungen",
+                    "verify_ssl": "SSL-Zertifikat des Controllers überprüfen",
+                    "use_polling": "Abfrage statt WebSocket-Push-Updates verwenden"
+                }
+            },
+            "reauth_confirm": {
+                "title": "UniFi Access erneut authentifizieren",
+                "description": "Das API-Token für {host} ist nicht mehr gültig. Bitte gib ein neues API-Token ein.",
+                "data": {
+                    "api_token": "API-Token"
+                }
+            },
+            "reconfigure": {
+                "data": {
+                    "api_token": "API-Token",
+                    "host": "Host",
+                    "use_polling": "Intervallbasierte Abfrage",
+                    "verify_ssl": "SSL-Zertifikat überprüfen"
+                },
+                "data_description": {
+                    "host": "Hostname oder IP-Adresse des UniFi Access Controllers",
+                    "api_token": "API-Token aus den UniFi Access Einstellungen",
+                    "verify_ssl": "SSL-Zertifikat des Controllers überprüfen",
+                    "use_polling": "Abfrage statt WebSocket-Push-Updates verwenden"
                 }
             }
         }
@@ -24,19 +53,49 @@
         "binary_sensor": {
             "access_door_dps": {
                 "name": "Türpositionssensor"
+            },
+            "doorbell_status": {
+                "name": "Türklingel"
             }
         },
         "event": {
             "access_event": {
-                "name": "Zutritt"
+                "name": "Zutrittsereignis",
+                "state_attributes": {
+                    "event_type": {
+                        "state": {
+                            "unifi_access_entry": "Zutritt",
+                            "unifi_access_exit": "Austritt",
+                            "unifi_access_access": "Zugang"
+                        }
+                    }
+                }
             },
             "doorbell_event": {
-                "name": "Türklingel betätigt"
+                "name": "Türklingel betätigt",
+                "state_attributes": {
+                    "event_type": {
+                        "state": {
+                            "unifi_access_doorbell_start": "Klingel Start",
+                            "unifi_access_doorbell_stop": "Klingel Stop"
+                        }
+                    }
+                }
+            }
+        },
+        "image": {
+            "door_thumbnail": {
+                "name": "Vorschaubild"
             }
         },
         "lock": {
             "access_door": {
                 "name": "{door_name}"
+            }
+        },
+        "button": {
+            "clear_obstruction": {
+                "name": "Blockierung aufheben"
             }
         },
         "cover": {
@@ -49,10 +108,10 @@
                 "name": "Regel-Intervall (min)"
             },
             "door_open_time": {
-                "name": "Türöffnungszeit"
+                "name": "Öffnungszeitlimit"
             },
             "door_close_time": {
-                "name": "Türschließzeit"
+                "name": "Schließzeitlimit"
             }
         },
         "select": {
@@ -63,7 +122,8 @@
                     "keep_lock": "Abgeschlossen halten",
                     "keep_unlock": "Aufgeschlossen halten",
                     "lock_early": "Frühzeitig abschließen",
-                    "reset": "Regel zurücksetzten"
+                    "lock_now": "Jetzt abschließen",
+                    "reset": "Regel zurücksetzen"
                 }
             },
             "entity_type": {

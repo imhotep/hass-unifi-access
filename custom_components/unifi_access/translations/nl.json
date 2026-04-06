@@ -1,7 +1,9 @@
 {
     "config": {
         "abort": {
-            "already_configured": "Toestel is reeds geconfigureerd"
+            "already_configured": "Toestel is reeds geconfigureerd",
+            "reauth_successful": "Herauthenticatie is geslaagd",
+            "reconfigure_successful": "Herconfiguratie is geslaagd"
         },
         "error": {
             "cannot_connect": "Verbinding lukt niet",
@@ -13,9 +15,36 @@
             "user": {
                 "data": {
                     "api_token": "API token",
-                    "host": "Gast",
+                    "host": "Host",
                     "use_polling": "Gebruik polling",
                     "verify_ssl": "Controleer SSL certificaat"
+                },
+                "data_description": {
+                    "host": "Hostnaam of IP-adres van de UniFi Access controller",
+                    "api_token": "API token gegenereerd in de UniFi Access instellingen",
+                    "verify_ssl": "Controleer het SSL certificaat van de controller",
+                    "use_polling": "Gebruik polling in plaats van websocket push-updates"
+                }
+            },
+            "reauth_confirm": {
+                "title": "UniFi Access opnieuw authenticeren",
+                "description": "Het API token voor {host} is niet meer geldig. Voer een nieuw API token in.",
+                "data": {
+                    "api_token": "API token"
+                }
+            },
+            "reconfigure": {
+                "data": {
+                    "api_token": "API token",
+                    "host": "Host",
+                    "use_polling": "Gebruik polling",
+                    "verify_ssl": "Controleer SSL certificaat"
+                },
+                "data_description": {
+                    "host": "Hostnaam of IP-adres van de UniFi Access controller",
+                    "api_token": "API token gegenereerd in de UniFi Access instellingen",
+                    "verify_ssl": "Controleer het SSL certificaat van de controller",
+                    "use_polling": "Gebruik polling in plaats van websocket push-updates"
                 }
             }
         }
@@ -24,24 +53,54 @@
         "binary_sensor": {
             "access_door_dps": {
                 "name": "Deur Positie Sensor"
+            },
+            "doorbell_status": {
+                "name": "Deurbel"
             }
         },
         "event": {
             "access_event": {
-                "name": "Toegang"
+                "name": "Deur Gebeurtenis",
+                "state_attributes": {
+                    "event_type": {
+                        "state": {
+                            "unifi_access_entry": "Toegang",
+                            "unifi_access_exit": "Uitgang",
+                            "unifi_access_access": "Toegang"
+                        }
+                    }
+                }
             },
             "doorbell_event": {
-                "name": "Deurbel Drukken"
+                "name": "Deurbel",
+                "state_attributes": {
+                    "event_type": {
+                        "state": {
+                            "unifi_access_doorbell_start": "Deurbel Start",
+                            "unifi_access_doorbell_stop": "Deurbel Stop"
+                        }
+                    }
+                }
+            }
+        },
+        "image": {
+            "door_thumbnail": {
+                "name": "Miniatuur"
             }
         },
         "lock": {
             "access_door": {
-                "name": "{deur_naam}"
+                "name": "{door_name}"
+            }
+        },
+        "button": {
+            "clear_obstruction": {
+                "name": "Blokkade opheffen"
             }
         },
         "cover": {
             "access_cover": {
-                "name": "{deur_naam}"
+                "name": "{door_name}"
             }
         },
         "number": {
@@ -49,10 +108,10 @@
                 "name": "Regel Interval (min)"
             },
             "door_open_time": {
-                "name": "Deur open tijd"
+                "name": "Openingstijdslimiet"
             },
             "door_close_time": {
-                "name": "Deur sluit tijd"
+                "name": "Sluitingstijdslimiet"
             }
         },
         "select": {
@@ -63,6 +122,7 @@
                     "keep_lock": "Hou het gesloten",
                     "keep_unlock": "Hou het open",
                     "lock_early": "Sluit vroeg",
+                    "lock_now": "Nu sluiten",
                     "reset": "Regel opnieuw instellen"
                 }
             },

@@ -2,23 +2,22 @@
 
 DOMAIN = "unifi_access"
 
-# URLs
-UNIFI_ACCESS_API_PORT = 12445
-DOORS_URL = "/api/v1/developer/doors"
-DEVICES_URL = "/api/v1/developer/devices"
-DOOR_UNLOCK_URL = "/api/v1/developer/doors/{door_id}/unlock"
-DOOR_LOCK_RULE_URL = "/api/v1/developer/doors/{door_id}/lock_rule"
-DEVICE_NOTIFICATIONS_URL = "/api/v1/developer/devices/notifications"
-DOORS_EMERGENCY_URL = "/api/v1/developer/doors/settings/emergency"
-STATIC_URL = "/api/v1/developer/system/static"
+# Door entity types — controls which HA platform entity a door appears as
+DOOR_TYPE_LOCK = "lock"
+DOOR_TYPE_GARAGE = "garage"
+DOOR_TYPE_GATE = "gate"
+DOOR_TYPES = [DOOR_TYPE_LOCK, DOOR_TYPE_GARAGE, DOOR_TYPE_GATE]
 
+# Storage (for door type)
+STORAGE_KEY = "unifi_access_entity_types"
+STORAGE_VERSION = 1
+
+# Doorbell event types
 DOORBELL_EVENT = "doorbell_press"
 DOORBELL_START_EVENT = "unifi_access_doorbell_start"
 DOORBELL_STOP_EVENT = "unifi_access_doorbell_stop"
-ACCESS_EVENT = "unifi_access_{type}"
+
+# Access event types
 ACCESS_ENTRY_EVENT = "unifi_access_entry"
 ACCESS_EXIT_EVENT = "unifi_access_exit"
-
-# Storage
-STORAGE_KEY = "unifi_access_entity_types"
-STORAGE_VERSION = 1
+ACCESS_GENERIC_EVENT = "unifi_access_access"
