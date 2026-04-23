@@ -1,5 +1,11 @@
 # Unifi Access Custom Integration for Home Assistant
 
+## There is now a core integration for Unifi Access so which one should I use? Will this HACS one continue to be maintained?
+This integration will continue to be maintained for the foreseable future. There are some slight differences with the core version listed below:
+- The core version uses button entities instead of lock entities. It requires a template entity in order to use the `lock` entity. This one does not.
+- The core version offers auto discovery. This one does not.
+- The core version requires setting up actions for door locking rules. Ths one does not.
+
 - This is a basic integration of [Unifi Access](https://ui.com/door-access) in [Home Assistant](https://homeassistant.io). 
 - If you have Unifi Access set up with UID this will likely *NOT* work although some people have reported success using the free version of UID. 
 - _Camera Feeds are currently not offered by the API and therefore **NOT** supported_.
@@ -19,6 +25,8 @@
 - Create a new token and pick all permissions (this is *IMPORTANT*). At the very least pick: Space, Device and System Log.
 
 # Installation (HACS)
+- You can just add this integration to HACS by searching for Unifi Access. If you can't find it, follow the steps below.
+
 - Add this repository as a custom repository in HACS and install the integration.
 - Restart Home Assistant
 - Add new Integration -> Unifi Access
