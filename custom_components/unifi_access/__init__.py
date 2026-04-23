@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-import ssl
 from dataclasses import dataclass
+import ssl
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.storage import Store
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.storage import Store
 from homeassistant.util import ssl as ssl_util
 from unifi_access_api import ApiConnectionError, EmergencyStatus, UnifiAccessApiClient
 
@@ -46,9 +46,7 @@ class UnifiAccessData:
 type UnifiAccessConfigEntry = ConfigEntry[UnifiAccessData]
 
 
-async def async_setup_entry(
-    hass: HomeAssistant, entry: UnifiAccessConfigEntry
-) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: UnifiAccessConfigEntry) -> bool:
     """Set up Unifi Access from a config entry."""
     session = async_get_clientsession(hass, verify_ssl=entry.data["verify_ssl"])
 

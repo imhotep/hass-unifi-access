@@ -11,7 +11,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import UnifiAccessConfigEntry, UnifiAccessData
 from .const import DOOR_TYPE_LOCK
-from .entity import UnifiAccessDoorEntity
+from .entity import UnifiAccessDoorEntity, manage_door_entities
 
 PARALLEL_UPDATES = 1
 
@@ -25,10 +25,12 @@ async def async_setup_entry(
 ) -> None:
     """Add lock entity for passed config entry."""
     data = config_entry.runtime_data
-    async_add_entities(
-        UnifiDoorLockEntity(data, key)
-        for key, door in data.coordinator.data.items()
-        if door.entity_type == DOOR_TYPE_LOCK
+    manage_door_entities(
+        config_entry,
+        data.coordinator,
+        async_add_entities,
+        lambda door: door.entity_type == DOOR_TYPE_LOCK,
+        lambda door_id: [UnifiDoorLockEntity(data, door_id)],
     )
 
 

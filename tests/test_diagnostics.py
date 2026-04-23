@@ -14,6 +14,8 @@ from custom_components.unifi_access.diagnostics import (
 
 from .conftest import (
     MOCK_CONFIG,
+    SAMPLE_DEVICE_DOOR_MAP,
+    SAMPLE_DEVICES,
     SAMPLE_DOORS,
     SAMPLE_EMERGENCY_STATUS,
     SAMPLE_LOCK_RULE_STATUS,
@@ -27,6 +29,9 @@ def _make_mock_client() -> AsyncMock:
     client.get_doors = AsyncMock(return_value=SAMPLE_DOORS)
     client.get_door_lock_rule = AsyncMock(return_value=SAMPLE_LOCK_RULE_STATUS)
     client.get_emergency_status = AsyncMock(return_value=SAMPLE_EMERGENCY_STATUS)
+    client.get_devices = AsyncMock(return_value=SAMPLE_DEVICES)
+    client.get_device_door_map = AsyncMock(return_value=SAMPLE_DEVICE_DOOR_MAP)
+    client.resolve_door_id = MagicMock(side_effect=SAMPLE_DEVICE_DOOR_MAP.get)
     client.start_websocket = MagicMock()
     client.close = AsyncMock()
     return client

@@ -19,7 +19,7 @@ from homeassistant.util import dt as dt_util
 
 from . import UnifiAccessConfigEntry, UnifiAccessData
 from .const import DOOR_TYPE_GARAGE, DOOR_TYPE_GATE
-from .entity import UnifiAccessDoorEntity
+from .entity import UnifiAccessDoorEntity, manage_door_entities
 
 PARALLEL_UPDATES = 1
 
@@ -33,22 +33,12 @@ async def async_setup_entry(
 ) -> None:
     """Add cover entities for garage/gate typed doors."""
     data = config_entry.runtime_data
-
-    known_cover_doors: set[str] = set()
-
-    def _check_for_cover_doors() -> None:
-        new_entities = []
-        for door_id, door in data.coordinator.data.items():
-            if door.entity_type in (DOOR_TYPE_GARAGE, DOOR_TYPE_GATE) and door_id not in known_cover_doors:
-                known_cover_doors.add(door_id)
-                new_entities.append(UnifiAccessCoverEntity(data, door_id))
-        if new_entities:
-            async_add_entities(new_entities)
-
-    _check_for_cover_doors()
-
-    config_entry.async_on_unload(
-        data.coordinator.async_add_listener(_check_for_cover_doors)
+    manage_door_entities(
+        config_entry,
+        data.coordinator,
+        async_add_entities,
+        lambda door: door.entity_type in (DOOR_TYPE_GARAGE, DOOR_TYPE_GATE),
+        lambda door_id: [UnifiAccessCoverEntity(data, door_id)],
     )
 
 
@@ -180,14 +170,19 @@ class UnifiAccessCoverEntity(UnifiAccessDoorEntity, CoverEntity):
             # Opened externally
             open_time = self.door.open_time
             if open_time > 0:
-                _LOGGER.info("Door %s opened externally, starting open timer", self.door.name)
+                _LOGGER.info(
+                    "Door %s opened externally, starting open timer", self.door.name
+                )
                 self._is_opening = True
                 self.door.obstruction_detected = False
                 self.async_write_ha_state()
                 self._start_opening_timer(open_time)
         elif sensor_closed and self._is_opening:
             # Closed unexpectedly while opening
-            _LOGGER.warning("Door %s closed unexpectedly during opening - obstructed", self.door.name)
+            _LOGGER.warning(
+                "Door %s closed unexpectedly during opening - obstructed",
+                self.door.name,
+            )
             self._cancel_operation_timer()
             self._is_opening = False
             self.door.obstruction_detected = True
@@ -226,7 +221,9 @@ class UnifiAccessCoverEntity(UnifiAccessDoorEntity, CoverEntity):
         # at trigger time may be mid-travel from a preceding close cycle.
         open_time = self.door.open_time
         if open_time > 0:
-            _LOGGER.debug("Door %s starting open operation (%ds)", self.door.name, open_time)
+            _LOGGER.debug(
+                "Door %s starting open operation (%ds)", self.door.name, open_time
+            )
             self._cancel_operation_timer()
             self._is_opening = True
             self._is_closing = False
@@ -252,7 +249,9 @@ class UnifiAccessCoverEntity(UnifiAccessDoorEntity, CoverEntity):
         # at trigger time may be mid-travel from a preceding open cycle.
         close_time = self.door.close_time
         if close_time > 0:
-            _LOGGER.debug("Door %s starting close operation (%ds)", self.door.name, close_time)
+            _LOGGER.debug(
+                "Door %s starting close operation (%ds)", self.door.name, close_time
+            )
             self._cancel_operation_timer()
             self._is_opening = False
             self._is_closing = True
@@ -266,7 +265,10 @@ class UnifiAccessCoverEntity(UnifiAccessDoorEntity, CoverEntity):
     def _handle_coordinator_update(self) -> None:
         """Handle coordinator updates — detect sensor changes with debouncing."""
         current_sensor_closed = not self.door.is_open and self.door.is_locked
-        if self._last_sensor_state is not None and current_sensor_closed != self._last_sensor_state:
+        if (
+            self._last_sensor_state is not None
+            and current_sensor_closed != self._last_sensor_state
+        ):
             self._cancel_debounce_task()
             self._debounce_task = asyncio.ensure_future(
                 self._debounced_sensor_check(current_sensor_closed)

@@ -8,6 +8,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import UnifiAccessConfigEntry
 from .const import DOMAIN, DOOR_TYPE_GARAGE, DOOR_TYPE_GATE
+from .entity import manage_door_entities
 from .hub import DoorState
 
 PARALLEL_UPDATES = 0
@@ -29,22 +30,15 @@ async def async_setup_entry(
             ]
         )
 
-    known_timing_doors: set[str] = set()
-
-    def _check_for_cover_doors() -> None:
-        new_entities = []
-        for door_id, door in data.coordinator.data.items():
-            if door.entity_type in (DOOR_TYPE_GARAGE, DOOR_TYPE_GATE) and door_id not in known_timing_doors:
-                known_timing_doors.add(door_id)
-                new_entities.append(DoorOpenTimeNumberEntity(door))
-                new_entities.append(DoorCloseTimeNumberEntity(door))
-        if new_entities:
-            async_add_entities(new_entities)
-
-    _check_for_cover_doors()
-
-    config_entry.async_on_unload(
-        data.coordinator.async_add_listener(_check_for_cover_doors)
+    manage_door_entities(
+        config_entry,
+        data.coordinator,
+        async_add_entities,
+        lambda door: door.entity_type in (DOOR_TYPE_GARAGE, DOOR_TYPE_GATE),
+        lambda door_id: [
+            DoorOpenTimeNumberEntity(data.coordinator.data[door_id]),
+            DoorCloseTimeNumberEntity(data.coordinator.data[door_id]),
+        ],
     )
 
 

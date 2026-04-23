@@ -49,7 +49,9 @@ async def test_user_flow_cannot_connect(hass: HomeAssistant) -> None:
         "custom_components.unifi_access.config_flow.UnifiAccessApiClient"
     ) as mock_client_cls:
         mock_client = AsyncMock()
-        mock_client.authenticate = AsyncMock(side_effect=ApiConnectionError("fail"))
+        mock_client.authenticate = AsyncMock(
+            side_effect=ApiConnectionError("fail")
+        )
         mock_client_cls.return_value = mock_client
 
         result = await hass.config_entries.flow.async_configure(
@@ -261,9 +263,7 @@ async def test_reconfigure_flow_cannot_connect(
         "custom_components.unifi_access.config_flow.UnifiAccessApiClient"
     ) as mock_client_cls:
         mock_client = AsyncMock()
-        mock_client.authenticate = AsyncMock(
-            side_effect=ApiConnectionError("fail")
-        )
+        mock_client.authenticate = AsyncMock(side_effect=ApiConnectionError("fail"))
         mock_client_cls.return_value = mock_client
 
         result = await hass.config_entries.flow.async_configure(

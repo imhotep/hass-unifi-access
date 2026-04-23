@@ -19,6 +19,7 @@ from unifi_access_api import (
     ApiError,
     ApiNotFoundError,
     BaseInfo,
+    Device,
     DeviceUpdate,
     Door,
     DoorLockRelayStatus,
@@ -195,43 +196,81 @@ class UnifiAccessHub:
                 _LOGGER.debug("Door lock rules not supported for door %s", door_id)
                 self.supports_door_lock_rules = False
                 break
-        # Populate hub_type from devices API so it's available at startup
-        # (not dependent on WebSocket device update messages arriving later)
-        await self._async_map_hub_types()
+        if any(state.hub_id is None for state in self.doors.values()):
+            # Populate hub_type from the devices API at startup instead of
+            # waiting for a later device update websocket event.
+            await self._async_map_hub_types()
         return self.doors
+
+    @staticmethod
+    def _is_hub_device(device: Device) -> bool:
+        """Return True when a device represents a hub/controller."""
+        capabilities = set(getattr(device, "capabilities", []))
+        return "is_hub" in capabilities or "identity_is_hub" in capabilities
 
     async def _async_map_hub_types(self) -> None:
         """Fetch devices and map hub types to doors."""
         try:
             devices = await self.client.get_devices()
-        except Exception:
-            _LOGGER.warning("Could not fetch devices for hub type mapping", exc_info=True)
+        except ApiError:
+            _LOGGER.warning(
+                "Could not fetch devices for hub type mapping", exc_info=True
+            )
             return
-        # Build map of hub id → hub type
-        hub_types: dict[str, str] = {}
+
+        hub_types = {
+            device.id: device.type for device in devices if self._is_hub_device(device)
+        }
+
         for device in devices:
-            caps = device.get("capabilities") or []
-            if "is_hub" in caps or "identity_is_hub" in caps:
-                hub_types[device["id"]] = device.get("type", "")
-        # Assign hub_type to each door
-        for device in devices:
-            location_id = device.get("location_id")
+            location_id = device.location_id
             if not location_id or location_id not in self.doors:
                 continue
+
             state = self.doors[location_id]
             if state.hub_id is not None:
-                continue  # already set (e.g. by WS device update)
-            caps = device.get("capabilities") or []
-            if "is_hub" in caps or "identity_is_hub" in caps:
-                state.hub_type = device.get("type")
-                state.hub_id = device.get("id")
-            elif device.get("connected_uah_id") in hub_types:
-                connected_id = device["connected_uah_id"]
+                continue
+
+            if self._is_hub_device(device):
+                state.hub_type = device.type
+                state.hub_id = device.id
+            elif device.connected_uah_id in hub_types:
+                connected_id = device.connected_uah_id
                 state.hub_type = hub_types[connected_id]
                 state.hub_id = connected_id
+
         _LOGGER.debug(
             "Hub type mapping: %s",
             {k: (v.hub_type, v.hub_id) for k, v in self.doors.items()},
+        )
+
+    def _resolve_door_state(
+        self,
+        reported_door_id: str,
+        msg: WebsocketMessage | None = None,
+    ) -> DoorState | None:
+        """Resolve a websocket door identifier to a tracked door state."""
+        state = self.doors.get(reported_door_id)
+        if state is not None:
+            return state
+
+        mapped_door_id = getattr(msg, "door_id", "")
+        if not isinstance(mapped_door_id, str):
+            mapped_door_id = ""
+        if not mapped_door_id:
+            mapped_door_id = self.client.resolve_door_id(reported_door_id)
+        if mapped_door_id:
+            state = self.doors.get(mapped_door_id)
+            if state is not None:
+                return state
+
+        return next(
+            (
+                door
+                for door in self.doors.values()
+                if getattr(door, "hub_id", None) == reported_door_id
+            ),
+            None,
         )
 
     async def async_get_emergency_status(self) -> EmergencyStatus:
@@ -475,7 +514,14 @@ class UnifiAccessHub:
 
         # Fire access events from logs.add as fallback — but skip if
         # insights.add already fired for this door recently.
-        last_insight = self._last_insight_time.get(door_target.id, 0.0)
+        resolved_door_id = getattr(msg, "door_id", "")
+        if not isinstance(resolved_door_id, str):
+            resolved_door_id = ""
+        if not resolved_door_id:
+            resolved_door_id = self.client.resolve_door_id(door_target.id)
+        last_insight = self._last_insight_time.get(
+            resolved_door_id or door_target.id, 0.0
+        )
         if time.monotonic() - last_insight < 5.0:
             return
 
@@ -483,26 +529,13 @@ class UnifiAccessHub:
         if device_config is None:
             return
 
-        state = self.doors.get(door_target.id)
+        state = self._resolve_door_state(door_target.id, msg)
         if state is None:
-            _LOGGER.debug(
-                "Potential buggy version of unifi access api detected - looking for door by hub id %s",
+            _LOGGER.warning(
+                "Could not find door for log event with door id %s",
                 door_target.id,
             )
-            state = next(
-                (
-                    door
-                    for door in self.doors.values()
-                    if getattr(door, "hub_id", None) == door_target.id
-                ),
-                None,
-            )
-            if state is None:
-                _LOGGER.warning(
-                    "Could not find door for log event with door id %s (or hub id)",
-                    door_target.id,
-                )
-                return
+            return
 
         access_type = device_config.display_name.lower()
         if access_type == "entry":
@@ -571,26 +604,13 @@ class UnifiAccessHub:
             _LOGGER.debug("Ignoring insights event without door metadata: %s", update)
             return
         reported_door_id = door_entries[0].id
-        state = self.doors.get(reported_door_id)
+        state = self._resolve_door_state(reported_door_id, msg)
         if state is None:
-            _LOGGER.debug(
-                "Potential buggy version of unifi access api detected - looking for door by hub id %s",
+            _LOGGER.warning(
+                "Could not find door for insights event with door id %s",
                 reported_door_id,
             )
-            state = next(
-                (
-                    door
-                    for door in self.doors.values()
-                    if getattr(door, "hub_id", None) == reported_door_id
-                ),
-                None,
-            )
-            if state is None:
-                _LOGGER.warning(
-                    "Could not find door for insights event with door id %s (or hub id)",
-                    reported_door_id,
-                )
-                return
+            return
 
         canonical_door_id = state.id
 

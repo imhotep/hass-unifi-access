@@ -7,7 +7,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import UnifiAccessConfigEntry, UnifiAccessData
 from .const import DOOR_TYPE_GARAGE, DOOR_TYPE_GATE
-from .entity import UnifiAccessDoorEntity
+from .entity import UnifiAccessDoorEntity, manage_door_entities
 
 PARALLEL_UPDATES = 1
 
@@ -19,22 +19,12 @@ async def async_setup_entry(
 ) -> None:
     """Add button entities for garage/gate typed doors."""
     data = config_entry.runtime_data
-
-    known_doors: set[str] = set()
-
-    def _check_for_cover_doors() -> None:
-        new_entities = []
-        for door_id, door in data.coordinator.data.items():
-            if door.entity_type in (DOOR_TYPE_GARAGE, DOOR_TYPE_GATE) and door_id not in known_doors:
-                known_doors.add(door_id)
-                new_entities.append(ClearObstructionButton(data, door_id))
-        if new_entities:
-            async_add_entities(new_entities)
-
-    _check_for_cover_doors()
-
-    config_entry.async_on_unload(
-        data.coordinator.async_add_listener(_check_for_cover_doors)
+    manage_door_entities(
+        config_entry,
+        data.coordinator,
+        async_add_entities,
+        lambda door: door.entity_type in (DOOR_TYPE_GARAGE, DOOR_TYPE_GATE),
+        lambda door_id: [ClearObstructionButton(data, door_id)],
     )
 
 

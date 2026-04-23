@@ -89,7 +89,7 @@ class TestNormalizeName:
 
     def test_nfc_normalization(self) -> None:
         # ä composed vs decomposed
-        composed = "\u00e4"     # ä
+        composed = "\u00e4"  # ä
         decomposed = "a\u0308"  # a + combining ¨
         assert _normalize_name(composed) == _normalize_name(decomposed)
 
@@ -126,6 +126,16 @@ class TestHubUpdate:
         # Same DoorState object, just updated door
         assert hub.doors["door-001"] is state_001
         assert hub.doors["door-001"].hub_type == "UA-Hub"
+
+    async def test_async_update_only_fetches_devices_until_mapped(
+        self, hub: UnifiAccessHub, mock_api_client: AsyncMock
+    ) -> None:
+        """Hub type mapping should stop fetching devices after all doors are mapped."""
+        await hub.async_update()
+        assert mock_api_client.get_devices.call_count == 1
+
+        await hub.async_update()
+        assert mock_api_client.get_devices.call_count == 1
 
     async def test_async_update_lock_rule_failure(
         self, hub: UnifiAccessHub, mock_api_client: AsyncMock
@@ -226,11 +236,18 @@ class TestHubWebSocketHandlers:
 
         await hub._handle_location_update(msg)
 
-        assert hub.doors["door-001"].door.door_position_status == DoorPositionStatus.CLOSE
-        assert hub.doors["door-001"].door.door_lock_relay_status == DoorLockRelayStatus.UNLOCK
+        assert (
+            hub.doors["door-001"].door.door_position_status == DoorPositionStatus.CLOSE
+        )
+        assert (
+            hub.doors["door-001"].door.door_lock_relay_status
+            == DoorLockRelayStatus.UNLOCK
+        )
         hub.on_doors_updated.assert_called_once()
 
-    async def test_handle_location_update_unknown_door(self, hub: UnifiAccessHub) -> None:
+    async def test_handle_location_update_unknown_door(
+        self, hub: UnifiAccessHub
+    ) -> None:
         """Ignore updates for unknown doors."""
         msg = MagicMock()
         msg.data.id = "door-unknown"
@@ -267,7 +284,7 @@ class TestHubWebSocketHandlers:
         hub.on_doors_updated.assert_called_once()
 
     async def test_handle_device_update(self, hub: UnifiAccessHub) -> None:
-        """Test device update handler assigns hub type."""
+        """Device updates should not overwrite the startup hub mapping."""
         msg = MagicMock()
         msg.data.unique_id = "hub-001"
         msg.data.device_type = "UA-Hub"
@@ -276,9 +293,9 @@ class TestHubWebSocketHandlers:
 
         await hub._handle_device_update(msg)
 
-        assert hub.doors["door-001"].hub_type == "UA-Hub"
-        assert hub.doors["door-001"].hub_id == "hub-001"
-        hub.on_doors_updated.assert_called_once()
+        assert hub.doors["door-001"].hub_type == "UGT"
+        assert hub.doors["door-001"].hub_id == "hub-ugt-001"
+        hub.on_doors_updated.assert_not_called()
 
     async def test_handle_device_update_already_set(self, hub: UnifiAccessHub) -> None:
         """Device update should be ignored if hub is already set."""
@@ -334,20 +351,19 @@ class TestHubWebSocketHandlers:
         assert events_received[0][1]["result"] == "ACCESS"
         hub.on_doors_updated.assert_not_called()
 
-    async def test_handle_insights_add_unknown_door(
-        self, hub: UnifiAccessHub
-    ) -> None:
+    async def test_handle_insights_add_unknown_door(self, hub: UnifiAccessHub) -> None:
         """Ignore insights for unknown doors."""
         msg = MagicMock()
         msg.data.metadata.door = [MagicMock(id="door-unknown")]
         await hub._handle_insights_add(msg)
         hub.on_doors_updated.assert_not_called()
 
-    async def test_handle_insights_add_falls_back_to_hub_id(
+    async def test_handle_insights_add_uses_client_door_mapping(
         self, hub: UnifiAccessHub
     ) -> None:
-        """InsightsAdd should resolve a door by hub_id when metadata uses the hub id."""
-        hub.doors["door-001"].hub_id = "hub-001"
+        """InsightsAdd should resolve a door via the client's device→door map."""
+        hub.client.resolve_door_id.side_effect = None
+        hub.client.resolve_door_id.return_value = "door-001"
 
         msg = MagicMock()
         msg.data.metadata.door = [MagicMock(id="hub-001")]
@@ -372,11 +388,12 @@ class TestHubWebSocketHandlers:
         assert "door-001" in hub._last_insight_time
         hub.on_doors_updated.assert_not_called()
 
-    async def test_handle_logs_add_suppressed_after_insight_hub_id_fallback(
+    async def test_handle_logs_add_suppressed_after_insight_door_mapping(
         self, hub: UnifiAccessHub
     ) -> None:
-        """logs.add should be suppressed when insights.add resolved the door via hub_id."""
-        hub.doors["door-001"].hub_id = "hub-001"
+        """logs.add should dedupe against the mapped canonical door id."""
+        hub.client.resolve_door_id.side_effect = None
+        hub.client.resolve_door_id.return_value = "door-001"
 
         insight_msg = MagicMock()
         insight_msg.data.metadata.door = [MagicMock(id="hub-001")]
@@ -418,8 +435,13 @@ class TestHubWebSocketHandlers:
 
         await hub._handle_v2_location_update(msg)
 
-        assert hub.doors["door-001"].door.door_position_status == DoorPositionStatus.CLOSE
-        assert hub.doors["door-001"].door.door_lock_relay_status == DoorLockRelayStatus.UNLOCK
+        assert (
+            hub.doors["door-001"].door.door_position_status == DoorPositionStatus.CLOSE
+        )
+        assert (
+            hub.doors["door-001"].door.door_lock_relay_status
+            == DoorLockRelayStatus.UNLOCK
+        )
         hub.on_doors_updated.assert_called_once()
 
     async def test_handle_v2_location_update_unknown_door(
@@ -451,7 +473,7 @@ class TestHubWebSocketHandlers:
         hub.on_doors_updated.assert_called_once()
 
     async def test_handle_v2_device_update(self, hub: UnifiAccessHub) -> None:
-        """Test V2 device update handler updates door state."""
+        """V2 device updates should preserve the startup hub mapping."""
         msg = MagicMock()
         msg.data.id = "hub-001"
         msg.data.device_type = "UA-Hub"
@@ -468,10 +490,15 @@ class TestHubWebSocketHandlers:
 
         await hub._handle_v2_device_update(msg)
 
-        assert hub.doors["door-001"].hub_type == "UA-Hub"
-        assert hub.doors["door-001"].hub_id == "hub-001"
-        assert hub.doors["door-001"].door.door_position_status == DoorPositionStatus.CLOSE
-        assert hub.doors["door-001"].door.door_lock_relay_status == DoorLockRelayStatus.UNLOCK
+        assert hub.doors["door-001"].hub_type == "UGT"
+        assert hub.doors["door-001"].hub_id == "hub-ugt-001"
+        assert (
+            hub.doors["door-001"].door.door_position_status == DoorPositionStatus.CLOSE
+        )
+        assert (
+            hub.doors["door-001"].door.door_lock_relay_status
+            == DoorLockRelayStatus.UNLOCK
+        )
         hub.on_doors_updated.assert_called_once()
 
     async def test_handle_v2_device_update_unknown_location(
@@ -520,7 +547,9 @@ class TestHubWebSocketHandlers:
 
         assert hub.doors["door-001"].hub_id == "existing-hub"
         assert hub.doors["door-001"].hub_type == "UA-Hub-Old"
-        assert hub.doors["door-001"].door.door_position_status == DoorPositionStatus.CLOSE
+        assert (
+            hub.doors["door-001"].door.door_position_status == DoorPositionStatus.CLOSE
+        )
         hub.on_doors_updated.assert_called_once()
 
     async def test_handle_location_update_legacy(
@@ -596,9 +625,7 @@ class TestHubWebSocketHandlers:
         assert events_received[0]["type"] == "unifi_access_entry"
         hub.on_doors_updated.assert_not_called()
 
-    async def test_handle_logs_add_unknown_door(
-        self, hub: UnifiAccessHub
-    ) -> None:
+    async def test_handle_logs_add_unknown_door(self, hub: UnifiAccessHub) -> None:
         """logs.add for a door not found by id or hub_id should be silently dropped."""
         msg = MagicMock()
         msg.data.source.target = [MagicMock(type="door", id="door-unknown")]
@@ -617,9 +644,7 @@ class TestHubWebSocketHandlers:
         assert len(events_received) == 0
         hub.on_doors_updated.assert_not_called()
 
-    async def test_handle_logs_add_logging_only(
-        self, hub: UnifiAccessHub
-    ) -> None:
+    async def test_handle_logs_add_logging_only(self, hub: UnifiAccessHub) -> None:
         """logs.add should only log, not trigger events (insights_add is primary)."""
         msg = MagicMock()
         msg.data.source.target = [
@@ -709,9 +734,7 @@ class TestHubWebSocketHandlers:
         assert state.door.door_position_status == DoorPositionStatus.CLOSE
         assert state.door.door_lock_relay_status == DoorLockRelayStatus.UNLOCK
 
-    async def test_apply_lock_dps_unknown_lock(
-        self, hub: UnifiAccessHub
-    ) -> None:
+    async def test_apply_lock_dps_unknown_lock(self, hub: UnifiAccessHub) -> None:
         """Unknown lock value should only update DPS, not lock relay."""
         state = hub.doors["door-001"]
         original_lock = state.door.door_lock_relay_status
