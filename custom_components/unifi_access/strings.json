@@ -88,6 +88,16 @@
         "name": "Thumbnail"
       }
     },
+    "button": {
+      "clear_obstruction": {
+        "name": "Clear Obstruction"
+      }
+    },
+    "cover": {
+      "access_cover": {
+        "name": "{door_name}"
+      }
+    },
     "lock": {
       "access_door": {
         "name": "{door_name}"
@@ -96,6 +106,12 @@
     "number": {
       "door_lock_rule_interval": {
         "name": "Rule Interval (min)"
+      },
+      "door_open_time": {
+        "name": "Opening Timeout"
+      },
+      "door_close_time": {
+        "name": "Closing Timeout"
       }
     },
     "select": {
@@ -108,6 +124,14 @@
           "lock_early": "Lock early",
           "lock_now": "Lock now",
           "reset": "Reset rule"
+        }
+      },
+      "entity_type": {
+        "name": "Entity Type",
+        "state": {
+          "lock": "Lock (Door)",
+          "garage": "Garage Door",
+          "gate": "Gate"
         }
       }
     },

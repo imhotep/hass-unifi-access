@@ -46,6 +46,7 @@ from .const import (
     ACCESS_ENTRY_EVENT,
     ACCESS_EXIT_EVENT,
     ACCESS_GENERIC_EVENT,
+    DOOR_TYPE_LOCK,
     DOORBELL_START_EVENT,
     DOORBELL_STOP_EVENT,
 )
@@ -70,9 +71,13 @@ class DoorState:
     door: Door
     hub_id: str | None = None
     hub_type: str | None = None
+    entity_type: str = DOOR_TYPE_LOCK
     lock_rule: str = ""
     lock_rule_ended_time: int = 0
     lock_rule_interval: int = 10
+    open_time: int = 0
+    close_time: int = 0
+    obstruction_detected: bool = False
     doorbell_request_id: str | None = None
     thumbnail: bytes | None = None
     thumbnail_last_updated: datetime | None = None
@@ -190,7 +195,44 @@ class UnifiAccessHub:
                 _LOGGER.debug("Door lock rules not supported for door %s", door_id)
                 self.supports_door_lock_rules = False
                 break
+        # Populate hub_type from devices API so it's available at startup
+        # (not dependent on WebSocket device update messages arriving later)
+        await self._async_map_hub_types()
         return self.doors
+
+    async def _async_map_hub_types(self) -> None:
+        """Fetch devices and map hub types to doors."""
+        try:
+            devices = await self.client.get_devices()
+        except Exception:
+            _LOGGER.warning("Could not fetch devices for hub type mapping", exc_info=True)
+            return
+        # Build map of hub id → hub type
+        hub_types: dict[str, str] = {}
+        for device in devices:
+            caps = device.get("capabilities") or []
+            if "is_hub" in caps or "identity_is_hub" in caps:
+                hub_types[device["id"]] = device.get("type", "")
+        # Assign hub_type to each door
+        for device in devices:
+            location_id = device.get("location_id")
+            if not location_id or location_id not in self.doors:
+                continue
+            state = self.doors[location_id]
+            if state.hub_id is not None:
+                continue  # already set (e.g. by WS device update)
+            caps = device.get("capabilities") or []
+            if "is_hub" in caps or "identity_is_hub" in caps:
+                state.hub_type = device.get("type")
+                state.hub_id = device.get("id")
+            elif device.get("connected_uah_id") in hub_types:
+                connected_id = device["connected_uah_id"]
+                state.hub_type = hub_types[connected_id]
+                state.hub_id = connected_id
+        _LOGGER.debug(
+            "Hub type mapping: %s",
+            {k: (v.hub_type, v.hub_id) for k, v in self.doors.items()},
+        )
 
     async def async_get_emergency_status(self) -> EmergencyStatus:
         """Fetch the current emergency status."""
