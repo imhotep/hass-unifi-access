@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import ssl
 from dataclasses import dataclass
+import ssl
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -11,15 +11,18 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.storage import Store
 from homeassistant.util import ssl as ssl_util
 from unifi_access_api import ApiConnectionError, EmergencyStatus, UnifiAccessApiClient
 
-from .const import DOMAIN
+from .const import DOMAIN, STORAGE_KEY, STORAGE_VERSION
 from .coordinator import UnifiAccessCoordinator
 from .hub import DoorState, UnifiAccessHub
 
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
+    Platform.BUTTON,
+    Platform.COVER,
     Platform.EVENT,
     Platform.IMAGE,
     Platform.LOCK,
@@ -37,14 +40,13 @@ class UnifiAccessData:
     hub: UnifiAccessHub
     coordinator: UnifiAccessCoordinator[dict[str, DoorState]]
     emergency_coordinator: UnifiAccessCoordinator[EmergencyStatus]
+    store: Store
 
 
 type UnifiAccessConfigEntry = ConfigEntry[UnifiAccessData]
 
 
-async def async_setup_entry(
-    hass: HomeAssistant, entry: UnifiAccessConfigEntry
-) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: UnifiAccessConfigEntry) -> bool:
     """Set up Unifi Access from a config entry."""
     session = async_get_clientsession(hass, verify_ssl=entry.data["verify_ssl"])
 
@@ -80,6 +82,16 @@ async def async_setup_entry(
     )
     await coordinator.async_config_entry_first_refresh()
 
+    # Restore persisted entity types (e.g. garage/gate for UGT doors)
+    store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
+    stored_data = await store.async_load() or {}
+    # Migrate old format: {"entity_types": {"door_id": "value"}}
+    if "entity_types" in stored_data:
+        stored_data = stored_data["entity_types"]
+    for door_id, door_state in coordinator.data.items():
+        if door_id in stored_data:
+            door_state.entity_type = stored_data[door_id]
+
     emergency_coordinator: UnifiAccessCoordinator[EmergencyStatus] = (
         UnifiAccessCoordinator(
             hass,
@@ -101,6 +113,7 @@ async def async_setup_entry(
         hub=hub,
         coordinator=coordinator,
         emergency_coordinator=emergency_coordinator,
+        store=store,
     )
 
     hub.create_task = lambda coro: entry.async_create_background_task(

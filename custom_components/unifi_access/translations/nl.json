@@ -93,9 +93,25 @@
                 "name": "{door_name}"
             }
         },
+        "button": {
+            "clear_obstruction": {
+                "name": "Blokkade opheffen"
+            }
+        },
+        "cover": {
+            "access_cover": {
+                "name": "{door_name}"
+            }
+        },
         "number": {
             "door_lock_rule_interval": {
                 "name": "Regel Interval (min)"
+            },
+            "door_open_time": {
+                "name": "Openingstijdslimiet"
+            },
+            "door_close_time": {
+                "name": "Sluitingstijdslimiet"
             }
         },
         "select": {
@@ -108,6 +124,14 @@
                     "lock_early": "Sluit vroeg",
                     "lock_now": "Nu sluiten",
                     "reset": "Regel opnieuw instellen"
+                }
+            },
+            "entity_type": {
+                "name": "Entiteitstype",
+                "state": {
+                    "lock": "Slot (Deur)",
+                    "garage": "Garagedeur",
+                    "gate": "Poort"
                 }
             }
         },
