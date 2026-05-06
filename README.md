@@ -4,11 +4,24 @@
 - If you have Unifi Access set up with UID this will likely *NOT* work although some people have reported success using the free version of UID. 
 - _Camera Feeds are currently not offered by the API and therefore **NOT** supported_.
 
-## There is now a core integration for Unifi Access so which one should I use? Will this HACS one continue to be maintained?
-This integration will continue to be maintained for the foreseable future. There are some slight differences with the core version listed below:
-- The core version uses button entities instead of lock entities. It requires a template entity in order to use the `lock` entity. This one does not.
-- The core version offers auto discovery. This one does not.
-- The core version requires setting up actions for door locking rules. Ths one does not.
+## Core integration vs. this HACS integration
+
+Home Assistant now includes a core UniFi Access integration. For most users, the core integration is the recommended starting point.
+
+The core integration has met Home Assistant's Platinum quality requirements and any changes to it are reviewed by Home Assistant core maintainers. This provides stronger long-term stability, consistency with Home Assistant architecture, and better alignment with the Home Assistant entity model.
+
+This HACS integration will continue to be maintained for the foreseeable future. It exists for users who prefer its current behavior, need features that are not yet available in core, or want functionality that does not fit easily into the architectural rules required for Home Assistant core integrations.
+
+In short:
+
+Use the core integration if you want the most official, reviewed, and Home Assistant-native experience.
+Use this HACS integration if you specifically need one of the differences listed below.
+
+Current differences
+The core integration uses button entities/actions for door operations. This follows Home Assistant's entity model more strictly, especially because the UniFi Access API does not currently support locking doors.
+This HACS integration exposes doors as lock entities for convenience. You can unlock/open a door, but locking is unsupported by the UniFi Access API and will only log a warning.
+The core integration supports auto-discovery. This HACS integration does not.
+The core integration may require additional Home Assistant helpers/templates or automations for some workflows that this HACS integration exposes more directly.
 
 # Supported hardware
 - Unifi Access Hub (UAH) :white_check_mark:
