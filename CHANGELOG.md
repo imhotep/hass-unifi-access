@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Improved international character support for German, French, and other languages
 
+## [3.0.6] - 2026-05-17
+
+### Fixed
+- Updated `py-unifi-access` to 1.2.0 to handle websocket device update payloads where `category` can be `null`
+
 ## [1.3.2] - 2024-10-21
 
 ### Changed
