@@ -20,6 +20,8 @@ Use this HACS integration if you specifically need one of the differences listed
 Current differences
 The core integration uses button entities/actions for door operations. This follows Home Assistant's entity model more strictly, especially because the UniFi Access API does not currently support locking doors.
 This HACS integration exposes doors as lock entities for convenience. You can unlock/open a door, but locking is unsupported by the UniFi Access API and will only log a warning.
+For UGT doors, this integration can also expose the door as a `cover` entity (`Garage Door` or `Gate`) instead of a `lock`, using a per-door `Entity Type` select.
+Changing a UGT door's entity type updates the relevant entities in place without unloading and reloading the whole integration.
 The core integration supports auto-discovery. This HACS integration does not.
 The core integration may require additional Home Assistant helpers/templates or automations for some workflows that this HACS integration exposes more directly.
 
@@ -49,9 +51,15 @@ The core integration may require additional Home Assistant helpers/templates or 
 - Select `Use polling` if your Unifi Access version is < 1.90. Default is to use websockets for instantaneous updates and more features.
 - It should find all of your doors and add the following entities for each one
     - Door Position Sensor (binary_sensor). If you don't have one connected, it will always be **off** (closed).
-    - Doorbell Pressed (binary_sensor). Requires **Unifi Access Reader Pro G1/G2** otherwise always **off**. Only appears when **Use polling** is not selected!
-    - Door Lock (lock). You can unlock or open a door, but locking is unsupported and only logs a warning.
+    - Doorbell (binary_sensor). Requires **Unifi Access Reader Pro G1/G2** otherwise always **off**. Only appears when **Use polling** is not selected.
+    - Door Lock (lock). This is the default entity type for doors. You can unlock or open a door, but locking is unsupported and only logs a warning.
+    - Thumbnail (`image`). Only appears when **Use polling** is not selected.
     - Event entities (`event`): Door Event and Doorbell Press. These are only created when `Use polling` is not selected.
+    - For **UGT** doors: an `Entity Type` (`select`) entity lets you switch the door between `Lock (Door)`, `Garage Door`, and `Gate`.
+    - When a UGT door is switched to `Garage Door` or `Gate`, the lock entity is replaced with:
+        - a `cover` entity
+        - `Opening Timeout` and `Closing Timeout` (`number`) helpers
+        - a `Clear Obstruction` (`button`) helper
 
 
 # Installation (manual)
@@ -65,9 +73,15 @@ The core integration may require additional Home Assistant helpers/templates or 
 - Select `Use polling` if your Unifi Access version is < 1.90. Default is to use websockets for instantaneous updates and more features.
 - It should find all of your doors and add the following entities for each one
     - Door Position Sensor (binary_sensor). If you don't have one connected, it will always be **off** (closed).
-    - Doorbell Pressed (binary_sensor). Requires **Unifi Access Reader Pro G1/G2** otherwise always **off**. Only appears when **Use polling** is not selected!
-    - Door Lock (lock). You can unlock or open a door, but locking is unsupported and only logs a warning.
+    - Doorbell (binary_sensor). Requires **Unifi Access Reader Pro G1/G2** otherwise always **off**. Only appears when **Use polling** is not selected.
+    - Door Lock (lock). This is the default entity type for doors. You can unlock or open a door, but locking is unsupported and only logs a warning.
+    - Thumbnail (`image`). Only appears when **Use polling** is not selected.
     - Event entities (`event`): Door Event and Doorbell Press. These are only created when `Use polling` is not selected.
+    - For **UGT** doors: an `Entity Type` (`select`) entity lets you switch the door between `Lock (Door)`, `Garage Door`, and `Gate`.
+    - When a UGT door is switched to `Garage Door` or `Gate`, the lock entity is replaced with:
+        - a `cover` entity
+        - `Opening Timeout` and `Closing Timeout` (`number`) helpers
+        - a `Clear Obstruction` (`button`) helper
 
 # Events
 When websocket mode is enabled (`Use polling` is **not** selected), this integration creates two Home Assistant `event` entities for each door:
@@ -115,12 +129,36 @@ The evacuation (unlock all doors) and lockdown (lock all doors) switches apply t
 ### Thumbnail 
 A thumbnail of when the door is last accessed/locked/unlocked.
 
+## UGT garage door / gate support
+
+UGT doors can now be modeled per door as either:
+
+- `Lock (Door)` - the default behavior
+- `Garage Door`
+- `Gate`
+
+This is controlled by the `Entity Type` select created for UGT doors.
+
+When you change that select:
+
+- the choice is persisted for that door
+- Home Assistant updates only the affected entities instead of reloading the full integration
+- `Garage Door` and `Gate` create a `cover` entity with `open` / `close` actions
+
+For `Garage Door` and `Gate` cover mode, the integration also adds:
+
+- `Opening Timeout` (`number`)
+- `Closing Timeout` (`number`)
+- `Clear Obstruction` (`button`)
+
+The cover entity uses the same UniFi Access momentary trigger as door unlock/open. The timeout helpers let Home Assistant infer whether the door is still opening or closing and expose an `obstruction_detected` attribute when the sensor state does not match the expected result.
+
 ### Door lock rules (only applies to UAH)
-The following entities will be created: `input_select`, `input_number` and 2 `sensor` entities (end time and current rule).
-You are able to select one of the following rules via the `input_select`:
+The following entities will be created: `select`, `number` and 2 `sensor` entities (end time and current rule).
+You are able to select one of the following rules via the `select` entity:
 - **keep_lock**: door is locked indefinitely
 - **keep_unlock**: door is unlocked indefinitely
-- **custom**: door is unlocked for a given interval (use the input_number to define how long. Default is 10 minutes).
+- **custom**: door is unlocked for a given interval (use the `number` entity to define how long. Default is 10 minutes).
 - **reset**: clear all lock rules
 - **lock_early**: locks the door if it's currently on an unlock schedule.
 - **lock_now**: locks the door if it's currently on an unlock schedule OR if it's unlocked temporarily via a locking rule.
