@@ -93,9 +93,25 @@
                 "name": "{door_name}"
             }
         },
+        "button": {
+            "clear_obstruction": {
+                "name": "Blockierung aufheben"
+            }
+        },
+        "cover": {
+            "access_cover": {
+                "name": "{door_name}"
+            }
+        },
         "number": {
             "door_lock_rule_interval": {
                 "name": "Regel-Intervall (min)"
+            },
+            "door_open_time": {
+                "name": "Öffnungszeitlimit"
+            },
+            "door_close_time": {
+                "name": "Schließzeitlimit"
             }
         },
         "select": {
@@ -108,6 +124,14 @@
                     "lock_early": "Frühzeitig abschließen",
                     "lock_now": "Jetzt abschließen",
                     "reset": "Regel zurücksetzen"
+                }
+            },
+            "entity_type": {
+                "name": "Entitätstyp",
+                "state": {
+                    "lock": "Schloss (Tür)",
+                    "garage": "Garagentor",
+                    "gate": "Tor"
                 }
             }
         },

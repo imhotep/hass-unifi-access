@@ -20,6 +20,7 @@ from homeassistant.core import HomeAssistant
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from unifi_access_api import (
+    Device,
     Door,
     DoorLockRelayStatus,
     DoorLockRuleStatus,
@@ -55,6 +56,7 @@ def _cleanup_stray_threads():
             and any(name in thread.name for name in known_stray_threads)
         ):
             thread.name = f"waitpid-{thread.name}"
+
 
 # ---------------------------------------------------------------------------
 # Sample data
@@ -94,6 +96,23 @@ SAMPLE_DOORS = [
         door_lock_relay_status=DoorLockRelayStatus.UNLOCK,
     ),
 ]
+
+SAMPLE_DEVICES = [
+    Device(
+        id="hub-ugt-001",
+        type="UGT",
+        location_id="door-001",
+        capabilities=["is_hub"],
+    ),
+    Device(
+        id="hub-mini-001",
+        type="UA-Hub-Door-Mini",
+        location_id="door-002",
+        capabilities=["is_hub"],
+    ),
+]
+
+SAMPLE_DEVICE_DOOR_MAP = {device.id: device.location_id for device in SAMPLE_DEVICES}
 
 SAMPLE_LOCK_RULE_STATUS = DoorLockRuleStatus(
     type=DoorLockRuleType.KEEP_LOCK,
@@ -144,6 +163,9 @@ def mock_api_client() -> AsyncMock:
     client.set_emergency_status = AsyncMock()
     client.set_door_lock_rule = AsyncMock()
     client.unlock_door = AsyncMock()
+    client.get_devices = AsyncMock(return_value=SAMPLE_DEVICES)
+    client.get_device_door_map = AsyncMock(return_value=SAMPLE_DEVICE_DOOR_MAP)
+    client.resolve_door_id = MagicMock(side_effect=SAMPLE_DEVICE_DOOR_MAP.get)
     client.get_thumbnail = AsyncMock(return_value=b"fake-image-bytes")
     client.start_websocket = MagicMock()
     client.close = AsyncMock()

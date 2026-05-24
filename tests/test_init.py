@@ -15,6 +15,8 @@ from custom_components.unifi_access.const import DOMAIN
 
 from .conftest import (
     MOCK_CONFIG,
+    SAMPLE_DEVICE_DOOR_MAP,
+    SAMPLE_DEVICES,
     SAMPLE_DOORS,
     SAMPLE_EMERGENCY_STATUS,
     SAMPLE_LOCK_RULE_STATUS,
@@ -41,6 +43,9 @@ def _make_mock_client() -> AsyncMock:
     client.get_doors = AsyncMock(return_value=SAMPLE_DOORS)
     client.get_door_lock_rule = AsyncMock(return_value=SAMPLE_LOCK_RULE_STATUS)
     client.get_emergency_status = AsyncMock(return_value=SAMPLE_EMERGENCY_STATUS)
+    client.get_devices = AsyncMock(return_value=SAMPLE_DEVICES)
+    client.get_device_door_map = AsyncMock(return_value=SAMPLE_DEVICE_DOOR_MAP)
+    client.resolve_door_id = MagicMock(side_effect=SAMPLE_DEVICE_DOOR_MAP.get)
     client.start_websocket = MagicMock()
     client.close = AsyncMock()
     return client
@@ -105,9 +110,7 @@ async def test_setup_entry_polling(
     mock_client.start_websocket.assert_not_called()
 
 
-async def test_unload_entry(
-    hass: HomeAssistant, mock_entry: MockConfigEntry
-) -> None:
+async def test_unload_entry(hass: HomeAssistant, mock_entry: MockConfigEntry) -> None:
     """Test unloading a config entry."""
     mock_client = _make_mock_client()
 
@@ -161,9 +164,7 @@ async def test_coordinator_auth_error(
 ) -> None:
     """Test that an auth error during coordinator refresh triggers reauth."""
     mock_client = _make_mock_client()
-    mock_client.get_doors = AsyncMock(
-        side_effect=ApiAuthError("Invalid token")
-    )
+    mock_client.get_doors = AsyncMock(side_effect=ApiAuthError("Invalid token"))
 
     with (
         patch(

@@ -93,9 +93,25 @@
                 "name": "{door_name}"
             }
         },
+        "button": {
+            "clear_obstruction": {
+                "name": "Rimuovi ostruzione"
+            }
+        },
+        "cover": {
+            "access_cover": {
+                "name": "{door_name}"
+            }
+        },
         "number": {
             "door_lock_rule_interval": {
                 "name": "Intervallo della regola (min)"
+            },
+            "door_open_time": {
+                "name": "Tempo massimo apertura"
+            },
+            "door_close_time": {
+                "name": "Tempo massimo chiusura"
             }
         },
         "select": {
@@ -108,6 +124,14 @@
                     "lock_early": "Blocco anticipato",
                     "lock_now": "Blocca ora",
                     "reset": "Azzeramento della regola"
+                }
+            },
+            "entity_type": {
+                "name": "Tipo di entità",
+                "state": {
+                    "lock": "Serratura (Porta)",
+                    "garage": "Porta del garage",
+                    "gate": "Cancello"
                 }
             }
         },

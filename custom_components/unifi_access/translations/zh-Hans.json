@@ -93,9 +93,25 @@
                 "name": "{door_name}"
             }
         },
+        "button": {
+            "clear_obstruction": {
+                "name": "清除障碍"
+            }
+        },
+        "cover": {
+            "access_cover": {
+                "name": "{door_name}"
+            }
+        },
         "number": {
             "door_lock_rule_interval": {
                 "name": "规则间隔（分钟）"
+            },
+            "door_open_time": {
+                "name": "开启超时时间"
+            },
+            "door_close_time": {
+                "name": "关闭超时时间"
             }
         },
         "select": {
@@ -108,6 +124,14 @@
                     "lock_early": "提前锁定",
                     "lock_now": "立即锁定",
                     "reset": "重置规则"
+                }
+            },
+            "entity_type": {
+                "name": "实体类型",
+                "state": {
+                    "lock": "锁（门）",
+                    "garage": "车库门",
+                    "gate": "大门"
                 }
             }
         },

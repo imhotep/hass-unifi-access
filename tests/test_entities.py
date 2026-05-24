@@ -18,6 +18,8 @@ from custom_components.unifi_access.const import DOMAIN
 from .conftest import (
     MOCK_CONFIG,
     MOCK_CONFIG_POLLING,
+    SAMPLE_DEVICE_DOOR_MAP,
+    SAMPLE_DEVICES,
     SAMPLE_DOORS,
     SAMPLE_EMERGENCY_STATUS,
     SAMPLE_LOCK_RULE_STATUS,
@@ -33,6 +35,9 @@ def _make_mock_client() -> AsyncMock:
     client.get_emergency_status = AsyncMock(return_value=SAMPLE_EMERGENCY_STATUS)
     client.set_emergency_status = AsyncMock()
     client.unlock_door = AsyncMock()
+    client.get_devices = AsyncMock(return_value=SAMPLE_DEVICES)
+    client.get_device_door_map = AsyncMock(return_value=SAMPLE_DEVICE_DOOR_MAP)
+    client.resolve_door_id = MagicMock(side_effect=SAMPLE_DEVICE_DOOR_MAP.get)
     client.start_websocket = MagicMock()
     client.close = AsyncMock()
     return client
@@ -80,27 +85,22 @@ class TestLockPlatform:
     ) -> None:
         """Lock entities should be created for each door."""
         entity_ids = [
-            s.entity_id
-            for s in hass.states.async_all()
-            if s.domain == "lock"
+            s.entity_id for s in hass.states.async_all() if s.domain == "lock"
         ]
         assert len(entity_ids) == 2
 
-    async def test_lock_state(
-        self, hass: HomeAssistant, setup_integration
-    ) -> None:
+    async def test_lock_state(self, hass: HomeAssistant, setup_integration) -> None:
         """Test that lock state reflects door lock relay status."""
         lock_states = [s.state for s in hass.states.async_all() if s.domain == "lock"]
         assert LockState.LOCKED in lock_states
         assert LockState.UNLOCKED in lock_states
 
-    async def test_unlock_door(
-        self, hass: HomeAssistant, setup_integration
-    ) -> None:
+    async def test_unlock_door(self, hass: HomeAssistant, setup_integration) -> None:
         """Test calling the unlock service."""
         _, mock_client = setup_integration
         lock_entity = next(
-            s for s in hass.states.async_all()
+            s
+            for s in hass.states.async_all()
             if s.domain == "lock" and s.state == LockState.LOCKED
         )
         await hass.services.async_call(
@@ -111,14 +111,10 @@ class TestLockPlatform:
         )
         mock_client.unlock_door.assert_called_once()
 
-    async def test_open_door(
-        self, hass: HomeAssistant, setup_integration
-    ) -> None:
+    async def test_open_door(self, hass: HomeAssistant, setup_integration) -> None:
         """Test calling the open service."""
         _, mock_client = setup_integration
-        lock_entity = next(
-            s for s in hass.states.async_all() if s.domain == "lock"
-        )
+        lock_entity = next(s for s in hass.states.async_all() if s.domain == "lock")
         await hass.services.async_call(
             LOCK_DOMAIN,
             "open",
@@ -135,9 +131,7 @@ class TestLockPlatform:
     ) -> None:
         """Calling lock should only log that locking is unsupported."""
         _, mock_client = setup_integration
-        lock_entity = next(
-            s for s in hass.states.async_all() if s.domain == "lock"
-        )
+        lock_entity = next(s for s in hass.states.async_all() if s.domain == "lock")
 
         caplog.set_level(logging.WARNING, logger="custom_components.unifi_access.lock")
 
@@ -165,17 +159,16 @@ class TestBinarySensorPlatform:
     ) -> None:
         """DPS (door position sensor) entities should be created for each door."""
         bs_entities = [
-            s for s in hass.states.async_all()
-            if s.domain == "binary_sensor"
+            s for s in hass.states.async_all() if s.domain == "binary_sensor"
         ]
         # 2 DPS sensors + 2 doorbell sensors (non-polling mode)
         assert len(bs_entities) == 4
 
-    async def test_dps_state(
-        self, hass: HomeAssistant, setup_integration
-    ) -> None:
+    async def test_dps_state(self, hass: HomeAssistant, setup_integration) -> None:
         """Door position sensor state should match door state."""
-        all_states = [s.state for s in hass.states.async_all() if s.domain == "binary_sensor"]
+        all_states = [
+            s.state for s in hass.states.async_all() if s.domain == "binary_sensor"
+        ]
         assert "on" in all_states or "off" in all_states
 
 
@@ -191,10 +184,7 @@ class TestSwitchPlatform:
         self, hass: HomeAssistant, setup_integration
     ) -> None:
         """Evacuation and lockdown switches should be created."""
-        switch_entities = [
-            s for s in hass.states.async_all()
-            if s.domain == "switch"
-        ]
+        switch_entities = [s for s in hass.states.async_all() if s.domain == "switch"]
         assert len(switch_entities) == 2
 
     async def test_switch_initial_state(
@@ -202,8 +192,7 @@ class TestSwitchPlatform:
     ) -> None:
         """Both switches should be off initially (no emergency)."""
         switch_states = [
-            s.state for s in hass.states.async_all()
-            if s.domain == "switch"
+            s.state for s in hass.states.async_all() if s.domain == "switch"
         ]
         assert all(state == "off" for state in switch_states)
 
@@ -213,7 +202,8 @@ class TestSwitchPlatform:
         """Test turning on the evacuation switch."""
         _, mock_client = setup_integration
         switch_entity = next(
-            s for s in hass.states.async_all()
+            s
+            for s in hass.states.async_all()
             if s.domain == "switch" and "evacuation" in s.entity_id
         )
         await hass.services.async_call(
@@ -238,10 +228,7 @@ class TestEventPlatform:
         self, hass: HomeAssistant, setup_integration
     ) -> None:
         """Access and doorbell event entities should be created (non-polling)."""
-        event_entities = [
-            s for s in hass.states.async_all()
-            if s.domain == "event"
-        ]
+        event_entities = [s for s in hass.states.async_all() if s.domain == "event"]
         # 2 access events + 2 doorbell events = 4
         assert len(event_entities) == 4
 
@@ -260,7 +247,8 @@ class TestSensorPlatform:
         """Lock rule sensor entities should be registered."""
         registry = er.async_get(hass)
         sensor_entries = [
-            e for e in registry.entities.values()
+            e
+            for e in registry.entities.values()
             if e.domain == "sensor" and e.platform == "unifi_access"
         ]
         # 2 doors x 2 sensors (rule + end time) = 4
@@ -288,10 +276,7 @@ class TestImagePlatform:
         self, hass: HomeAssistant, setup_integration
     ) -> None:
         """Image entities should be created for non-polling mode."""
-        image_entities = [
-            s for s in hass.states.async_all()
-            if s.domain == "image"
-        ]
+        image_entities = [s for s in hass.states.async_all() if s.domain == "image"]
         assert len(image_entities) == 2
 
 
@@ -309,11 +294,15 @@ class TestNumberPlatform:
         """Number entities should be registered (disabled by default)."""
         registry = er.async_get(hass)
         number_entries = [
-            e for e in registry.entities.values()
+            e
+            for e in registry.entities.values()
             if e.domain == "number" and e.platform == "unifi_access"
         ]
         assert len(number_entries) == 2
-        assert all(e.disabled_by == er.RegistryEntryDisabler.INTEGRATION for e in number_entries)
+        assert all(
+            e.disabled_by == er.RegistryEntryDisabler.INTEGRATION
+            for e in number_entries
+        )
 
     async def test_set_native_value(
         self, hass: HomeAssistant, setup_integration
@@ -340,27 +329,126 @@ class TestSelectPlatform:
         self, hass: HomeAssistant, setup_integration
     ) -> None:
         """Select entities should be created for each door."""
-        select_entities = [
-            s for s in hass.states.async_all()
-            if s.domain == "select"
-        ]
-        assert len(select_entities) == 2
+        select_entities = [s for s in hass.states.async_all() if s.domain == "select"]
+        assert len(select_entities) == 3
 
-    async def test_select_option(
-        self, hass: HomeAssistant, setup_integration
-    ) -> None:
+    async def test_select_option(self, hass: HomeAssistant, setup_integration) -> None:
         """Selecting an option should call hub.async_set_lock_rule."""
         _, mock_client = setup_integration
-        select_entity = next(
-            s for s in hass.states.async_all() if s.domain == "select"
+        registry = er.async_get(hass)
+        select_entity_id = registry.async_get_entity_id(
+            SELECT_DOMAIN, DOMAIN, "door_lock_rule_door-001"
         )
+        assert select_entity_id is not None
         await hass.services.async_call(
             SELECT_DOMAIN,
             "select_option",
-            {"entity_id": select_entity.entity_id, "option": "keep_unlock"},
+            {"entity_id": select_entity_id, "option": "keep_unlock"},
             blocking=True,
         )
         mock_client.set_door_lock_rule.assert_called()
+
+    async def test_entity_type_switch_does_not_reload_platforms(
+        self, hass: HomeAssistant, setup_integration
+    ) -> None:
+        """Switching one door type should not unload unrelated platforms."""
+        entry, _ = setup_integration
+        registry = er.async_get(hass)
+
+        entity_type_entity_id = registry.async_get_entity_id(
+            SELECT_DOMAIN, DOMAIN, "door-001_entity_type"
+        )
+        assert entity_type_entity_id is not None
+
+        with (
+            patch.object(
+                hass.config_entries,
+                "async_unload_platforms",
+                wraps=hass.config_entries.async_unload_platforms,
+            ) as unload_platforms,
+            patch.object(
+                hass.config_entries,
+                "async_forward_entry_setups",
+                wraps=hass.config_entries.async_forward_entry_setups,
+            ) as forward_entry_setups,
+        ):
+            await hass.services.async_call(
+                SELECT_DOMAIN,
+                "select_option",
+                {"entity_id": entity_type_entity_id, "option": "garage"},
+                blocking=True,
+            )
+            await hass.async_block_till_done()
+
+        unload_platforms.assert_not_called()
+        forward_entry_setups.assert_not_called()
+
+        assert registry.async_get_entity_id("lock", DOMAIN, "door-001") is None
+
+        back_door_lock_entity_id = registry.async_get_entity_id(
+            "lock", DOMAIN, "door-002"
+        )
+        assert back_door_lock_entity_id is not None
+        assert hass.states.get(back_door_lock_entity_id) is not None
+
+        cover_entity_id = registry.async_get_entity_id(
+            "cover", DOMAIN, "door-001_cover"
+        )
+        assert cover_entity_id is not None
+        cover_state = hass.states.get(cover_entity_id)
+        assert cover_state is not None
+        assert cover_state.attributes["device_class"] == "garage"
+
+        door_state = entry.runtime_data.coordinator.data["door-001"]
+        assert door_state.entity_type == "garage"
+
+    async def test_cover_device_class_updates_without_reload(
+        self, hass: HomeAssistant, setup_integration
+    ) -> None:
+        """Garage/gate switches should update the existing cover entity."""
+        registry = er.async_get(hass)
+        entity_type_entity_id = registry.async_get_entity_id(
+            SELECT_DOMAIN, DOMAIN, "door-001_entity_type"
+        )
+        assert entity_type_entity_id is not None
+
+        await hass.services.async_call(
+            SELECT_DOMAIN,
+            "select_option",
+            {"entity_id": entity_type_entity_id, "option": "garage"},
+            blocking=True,
+        )
+        await hass.async_block_till_done()
+
+        cover_entity_id = registry.async_get_entity_id(
+            "cover", DOMAIN, "door-001_cover"
+        )
+        assert cover_entity_id is not None
+        assert hass.states.get(cover_entity_id).attributes["device_class"] == "garage"
+
+        with (
+            patch.object(
+                hass.config_entries,
+                "async_unload_platforms",
+                wraps=hass.config_entries.async_unload_platforms,
+            ) as unload_platforms,
+            patch.object(
+                hass.config_entries,
+                "async_forward_entry_setups",
+                wraps=hass.config_entries.async_forward_entry_setups,
+            ) as forward_entry_setups,
+        ):
+            await hass.services.async_call(
+                SELECT_DOMAIN,
+                "select_option",
+                {"entity_id": entity_type_entity_id, "option": "gate"},
+                blocking=True,
+            )
+            await hass.async_block_till_done()
+
+        unload_platforms.assert_not_called()
+        forward_entry_setups.assert_not_called()
+        assert hass.states.get(cover_entity_id).attributes["device_class"] == "gate"
 
 
 # ---------------------------------------------------------------------------
@@ -405,8 +493,7 @@ class TestPollingMode:
     ) -> None:
         """Doorbell binary sensors should NOT exist in polling mode."""
         bs_entities = [
-            s for s in hass.states.async_all()
-            if s.domain == "binary_sensor"
+            s for s in hass.states.async_all() if s.domain == "binary_sensor"
         ]
         # Only DPS sensors (2), no doorbell sensors
         assert len(bs_entities) == 2
@@ -415,18 +502,12 @@ class TestPollingMode:
         self, hass: HomeAssistant, setup_integration_polling
     ) -> None:
         """Event entities should NOT exist in polling mode."""
-        event_entities = [
-            s for s in hass.states.async_all()
-            if s.domain == "event"
-        ]
+        event_entities = [s for s in hass.states.async_all() if s.domain == "event"]
         assert len(event_entities) == 0
 
     async def test_no_image_entities(
         self, hass: HomeAssistant, setup_integration_polling
     ) -> None:
         """Image entities should NOT exist in polling mode."""
-        image_entities = [
-            s for s in hass.states.async_all()
-            if s.domain == "image"
-        ]
+        image_entities = [s for s in hass.states.async_all() if s.domain == "image"]
         assert len(image_entities) == 0
