@@ -77,7 +77,8 @@
                     "event_type": {
                         "state": {
                             "unifi_access_doorbell_start": "门铃开始",
-                            "unifi_access_doorbell_stop": "门铃停止"
+                            "unifi_access_doorbell_stop": "门铃停止",
+                            "ring": "响起"
                         }
                     }
                 }
