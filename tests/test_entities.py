@@ -232,6 +232,47 @@ class TestEventPlatform:
         # 2 access events + 2 doorbell events = 4
         assert len(event_entities) == 4
 
+    async def test_doorbell_event_types(
+        self, hass: HomeAssistant, setup_integration
+    ) -> None:
+        """Doorbell event entity should support the ring event type."""
+        doorbell_state = next(
+            s
+            for s in hass.states.async_all()
+            if s.domain == "event" and s.object_id.endswith("doorbell_press")
+        )
+        assert "ring" in doorbell_state.attributes.get("event_types", [])
+
+    async def test_doorbell_press_triggers_ring(
+        self, hass: HomeAssistant, setup_integration
+    ) -> None:
+        """Test that triggering a doorbell press starts a ring event."""
+        entry, _ = setup_integration
+        hub = entry.runtime_data.hub
+
+        doorbell_entity_id = next(
+            s.entity_id
+            for s in hass.states.async_all()
+            if s.domain == "event" and s.object_id.endswith("doorbell_press")
+        )
+
+        # Initially, event_type should not be set
+        doorbell_state = hass.states.get(doorbell_entity_id)
+        assert doorbell_state is not None
+        assert doorbell_state.attributes.get("event_type") is None
+
+        # Simulate doorbell press start via hub handler
+        msg = MagicMock()
+        msg.data.door_name = "Front Door"
+        msg.data.request_id = "req-abc"
+        await hub._handle_remote_view(msg)
+        await hass.async_block_till_done()
+
+        # The event_type attribute should now be "ring"
+        doorbell_state = hass.states.get(doorbell_entity_id)
+        assert doorbell_state is not None
+        assert doorbell_state.attributes.get("event_type") == "ring"
+
 
 # ---------------------------------------------------------------------------
 # Sensor entities

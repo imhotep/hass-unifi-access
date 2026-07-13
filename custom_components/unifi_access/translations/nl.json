@@ -77,7 +77,8 @@
                     "event_type": {
                         "state": {
                             "unifi_access_doorbell_start": "Deurbel Start",
-                            "unifi_access_doorbell_stop": "Deurbel Stop"
+                            "unifi_access_doorbell_stop": "Deurbel Stop",
+                            "ring": "Bellen"
                         }
                     }
                 }

@@ -77,7 +77,8 @@
                     "event_type": {
                         "state": {
                             "unifi_access_doorbell_start": "Campanello Inizio",
-                            "unifi_access_doorbell_stop": "Campanello Fine"
+                            "unifi_access_doorbell_stop": "Campanello Fine",
+                            "ring": "Suona"
                         }
                     }
                 }

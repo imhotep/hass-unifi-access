@@ -78,11 +78,18 @@ class AccessEventEntity(_UnifiAccessEventEntity):
         self._attr_unique_id = f"{self.door.id}_access"
 
 
+try:
+    from homeassistant.components.event import DoorbellEventType
+    DOORBELL_RING_EVENT = DoorbellEventType.RING
+except ImportError:
+    DOORBELL_RING_EVENT = "ring"
+
+
 class DoorbellPressedEventEntity(_UnifiAccessEventEntity):
     """Doorbell Press Event Entity."""
 
     _attr_device_class = EventDeviceClass.DOORBELL
-    _attr_event_types = [DOORBELL_START_EVENT, DOORBELL_STOP_EVENT]  # noqa: RUF012
+    _attr_event_types = [DOORBELL_START_EVENT, DOORBELL_STOP_EVENT, DOORBELL_RING_EVENT]  # noqa: RUF012
     _attr_translation_key = "doorbell_event"
     _event_name = "doorbell_press"
 
@@ -90,3 +97,11 @@ class DoorbellPressedEventEntity(_UnifiAccessEventEntity):
         """Initialize doorbell event entity."""
         super().__init__(door)
         self._attr_unique_id = f"{self.door.id}_doorbell_press"
+
+    def _async_handle_event(self, event: str, event_attributes: dict[str, str]) -> None:
+        """Handle incoming event from hub."""
+        event_type = event_attributes.get("type", event)
+        self._trigger_event(event_type, event_attributes)
+        if event_type == DOORBELL_START_EVENT:
+            self._trigger_event(DOORBELL_RING_EVENT, event_attributes)
+        self.async_write_ha_state()
