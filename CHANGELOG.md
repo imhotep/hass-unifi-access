@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.8] - 2026-07-12
+
+### Fixed
+- Added support for standard `'ring'` event type for doorbell event entities to resolve Home Assistant 2027.4 compatibility warnings (#217).
+- Preserved backward compatibility by continuing to trigger legacy `unifi_access_doorbell_start` and `unifi_access_doorbell_stop` events.
+- Updated all translation files and added automated unit tests for doorbell events.
+
+## [3.0.7] - 2026-06-08
+
 ### Added
 - Full Unicode support for device names with special characters (ö, ä, ü, etc.)
 - Support for Unifi Access G3 Intercom (UA-G3-Intercom)
