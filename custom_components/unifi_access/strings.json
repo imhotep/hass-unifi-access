@@ -1,4 +1,23 @@
 {
+  "services": {
+    "enable_user": {
+      "name": "Enable user",
+      "description": "Enable access for a UniFi Access user."
+    },
+    "disable_user": {
+      "name": "Disable user",
+      "description": "Disable access for a UniFi Access user."
+    },
+    "update_user_pin": {
+      "name": "Update user PIN",
+      "description": "Set or remove the PIN code for a UniFi Access user."
+    }
+  },
+  "exceptions": {
+    "invalid_config_entry": {
+      "message": "Invalid or missing UniFi Access config entry."
+    }
+  },
   "config": {
     "abort": {
       "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",

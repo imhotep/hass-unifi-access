@@ -5,19 +5,38 @@ from __future__ import annotations
 from dataclasses import dataclass
 import ssl
 
+import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers import device_registry as dr
+from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import ConfigEntryNotReady, ServiceValidationError
+from homeassistant.helpers import config_validation as cv, device_registry as dr
+from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.storage import Store
+from homeassistant.helpers.typing import ConfigType
 from homeassistant.util import ssl as ssl_util
 from unifi_access_api import ApiConnectionError, EmergencyStatus, UnifiAccessApiClient
 
 from .const import DOMAIN, STORAGE_KEY, STORAGE_VERSION
 from .coordinator import UnifiAccessCoordinator
 from .hub import DoorState, UnifiAccessHub
+
+_USER_FIELDS = {
+    vol.Required("config_entry_id"): selector.ConfigEntrySelector(
+        {"integration": DOMAIN}
+    ),
+    vol.Required("user_id"): cv.string,
+}
+
+ENABLE_USER_SCHEMA = vol.Schema(_USER_FIELDS)
+DISABLE_USER_SCHEMA = vol.Schema(_USER_FIELDS)
+UPDATE_USER_PIN_SCHEMA = vol.Schema(
+    {
+        **_USER_FIELDS,
+        vol.Optional("pin"): vol.Any(None, cv.string),
+    }
+)
 
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
@@ -31,6 +50,43 @@ PLATFORMS: list[Platform] = [
     Platform.SENSOR,
     Platform.SWITCH,
 ]
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Set up domain-level services."""
+
+    async def _get_hub(config_entry_id: str) -> UnifiAccessHub:
+        entry = hass.config_entries.async_get_entry(config_entry_id)
+        if entry is None or not isinstance(entry.runtime_data, UnifiAccessData):
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_config_entry",
+            )
+        return entry.runtime_data.hub
+
+    async def handle_enable_user(call: ServiceCall) -> None:
+        hub = await _get_hub(call.data["config_entry_id"])
+        await hub.async_update_user_status(call.data["user_id"], enabled=True)
+
+    async def handle_disable_user(call: ServiceCall) -> None:
+        hub = await _get_hub(call.data["config_entry_id"])
+        await hub.async_update_user_status(call.data["user_id"], enabled=False)
+
+    async def handle_update_user_pin(call: ServiceCall) -> None:
+        hub = await _get_hub(call.data["config_entry_id"])
+        await hub.async_update_user_pin(call.data["user_id"], call.data.get("pin"))
+
+    hass.services.async_register(
+        DOMAIN, "enable_user", handle_enable_user, schema=ENABLE_USER_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, "disable_user", handle_disable_user, schema=DISABLE_USER_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, "update_user_pin", handle_update_user_pin, schema=UPDATE_USER_PIN_SCHEMA
+    )
+
+    return True
 
 
 @dataclass
