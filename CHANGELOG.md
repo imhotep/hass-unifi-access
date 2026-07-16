@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Three user management actions: `enable_user`, `disable_user`, and `update_user_pin`. These are domain-level actions (not per-door) that let you enable/disable a user's access or update their PIN from automations or Developer Tools.
+
 ## [3.0.8] - 2026-07-12
 
 ### Fixed
