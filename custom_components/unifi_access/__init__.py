@@ -11,7 +11,6 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ConfigEntryNotReady, ServiceValidationError
 from homeassistant.helpers import config_validation as cv, device_registry as dr
-from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.typing import ConfigType
@@ -22,18 +21,11 @@ from .const import DOMAIN, STORAGE_KEY, STORAGE_VERSION
 from .coordinator import UnifiAccessCoordinator
 from .hub import DoorState, UnifiAccessHub
 
-_USER_FIELDS = {
-    vol.Required("config_entry_id"): selector.ConfigEntrySelector(
-        {"integration": DOMAIN}
-    ),
-    vol.Required("user_id"): cv.string,
-}
-
-ENABLE_USER_SCHEMA = vol.Schema(_USER_FIELDS)
-DISABLE_USER_SCHEMA = vol.Schema(_USER_FIELDS)
+ENABLE_USER_SCHEMA = vol.Schema({vol.Required("user_id"): cv.string})
+DISABLE_USER_SCHEMA = vol.Schema({vol.Required("user_id"): cv.string})
 UPDATE_USER_PIN_SCHEMA = vol.Schema(
     {
-        **_USER_FIELDS,
+        vol.Required("user_id"): cv.string,
         vol.Optional("pin"): vol.Any(None, cv.string),
     }
 )
@@ -55,9 +47,15 @@ PLATFORMS: list[Platform] = [
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up domain-level services."""
 
-    async def _get_hub(config_entry_id: str) -> UnifiAccessHub:
-        entry = hass.config_entries.async_get_entry(config_entry_id)
-        if entry is None or not isinstance(entry.runtime_data, UnifiAccessData):
+    def _get_hub() -> UnifiAccessHub:
+        entries = hass.config_entries.async_loaded_entries(DOMAIN)
+        if not entries:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="no_config_entry",
+            )
+        entry = entries[0]
+        if not isinstance(entry.runtime_data, UnifiAccessData):
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
                 translation_key="invalid_config_entry",
@@ -65,15 +63,15 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         return entry.runtime_data.hub
 
     async def handle_enable_user(call: ServiceCall) -> None:
-        hub = await _get_hub(call.data["config_entry_id"])
+        hub = _get_hub()
         await hub.async_update_user_status(call.data["user_id"], enabled=True)
 
     async def handle_disable_user(call: ServiceCall) -> None:
-        hub = await _get_hub(call.data["config_entry_id"])
+        hub = _get_hub()
         await hub.async_update_user_status(call.data["user_id"], enabled=False)
 
     async def handle_update_user_pin(call: ServiceCall) -> None:
-        hub = await _get_hub(call.data["config_entry_id"])
+        hub = _get_hub()
         await hub.async_update_user_pin(call.data["user_id"], call.data.get("pin"))
 
     hass.services.async_register(

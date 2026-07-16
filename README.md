@@ -167,10 +167,6 @@ You are able to select one of the following rules via the `select` entity:
 
 Three actions let you manage user accounts directly from Home Assistant automations or Developer Tools. They are domain-level actions, not tied to any specific door.
 
-## Finding your `config_entry_id`
-
-Go to **Settings → Devices & Services**, find the Unifi Access card, click the three-dot menu (⋮), and select **Copy entry ID**. Alternatively, when calling an action from **Developer Tools → Actions**, the `Config entry` field shows a dropdown of all configured instances.
-
 ## Finding a `user_id`
 
 User IDs are UUIDs assigned by Unifi Access. You can find them in the Unifi Access web UI under **Users** (the ID appears in the URL when you open a user's profile), or from the Unifi Access API directly.
@@ -182,7 +178,6 @@ Enable a user's access credentials.
 ```yaml
 action: unifi_access.enable_user
 data:
-  config_entry_id: "your-config-entry-id"
   user_id: "abc123def456..."
 ```
 
@@ -193,7 +188,6 @@ Disable a user's access credentials without deleting them.
 ```yaml
 action: unifi_access.disable_user
 data:
-  config_entry_id: "your-config-entry-id"
   user_id: "abc123def456..."
 ```
 
@@ -205,7 +199,6 @@ Set or remove a user's PIN code. Omit `pin` (or leave it blank) to remove the ex
 # Set a PIN
 action: unifi_access.update_user_pin
 data:
-  config_entry_id: "your-config-entry-id"
   user_id: "abc123def456..."
   pin: "1234"
 ```
@@ -214,7 +207,6 @@ data:
 # Remove the PIN
 action: unifi_access.update_user_pin
 data:
-  config_entry_id: "your-config-entry-id"
   user_id: "abc123def456..."
 ```
 
@@ -231,7 +223,6 @@ triggers:
 actions:
   - action: unifi_access.disable_user
     data:
-      config_entry_id: "your-config-entry-id"
       user_id: "abc123def456..."
 mode: single
 ```

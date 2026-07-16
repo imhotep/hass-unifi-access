@@ -14,6 +14,9 @@
     }
   },
   "exceptions": {
+    "no_config_entry": {
+      "message": "No UniFi Access integration is loaded. Make sure the integration is configured and running."
+    },
     "invalid_config_entry": {
       "message": "Invalid or missing UniFi Access config entry."
     }

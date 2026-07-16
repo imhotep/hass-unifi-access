@@ -76,12 +76,12 @@ async def test_async_setup_registers_services(hass: HomeAssistant) -> None:
 async def test_enable_user_service(hass: HomeAssistant) -> None:
     """enable_user service calls hub.async_update_user_status with enabled=True."""
     mock_client = _make_mock_client()
-    entry = await _setup_integration(hass, mock_client)
+    await _setup_integration(hass, mock_client)
 
     await hass.services.async_call(
         DOMAIN,
         "enable_user",
-        {"config_entry_id": entry.entry_id, "user_id": "user-001"},
+        {"user_id": "user-001"},
         blocking=True,
     )
 
@@ -91,12 +91,12 @@ async def test_enable_user_service(hass: HomeAssistant) -> None:
 async def test_disable_user_service(hass: HomeAssistant) -> None:
     """disable_user service calls hub.async_update_user_status with enabled=False."""
     mock_client = _make_mock_client()
-    entry = await _setup_integration(hass, mock_client)
+    await _setup_integration(hass, mock_client)
 
     await hass.services.async_call(
         DOMAIN,
         "disable_user",
-        {"config_entry_id": entry.entry_id, "user_id": "user-002"},
+        {"user_id": "user-002"},
         blocking=True,
     )
 
@@ -106,12 +106,12 @@ async def test_disable_user_service(hass: HomeAssistant) -> None:
 async def test_update_user_pin_service_set(hass: HomeAssistant) -> None:
     """update_user_pin service passes the PIN to hub.async_update_user_pin."""
     mock_client = _make_mock_client()
-    entry = await _setup_integration(hass, mock_client)
+    await _setup_integration(hass, mock_client)
 
     await hass.services.async_call(
         DOMAIN,
         "update_user_pin",
-        {"config_entry_id": entry.entry_id, "user_id": "user-001", "pin": "1234"},
+        {"user_id": "user-001", "pin": "1234"},
         blocking=True,
     )
 
@@ -121,27 +121,26 @@ async def test_update_user_pin_service_set(hass: HomeAssistant) -> None:
 async def test_update_user_pin_service_no_pin(hass: HomeAssistant) -> None:
     """update_user_pin without pin field passes None to hub.async_update_user_pin."""
     mock_client = _make_mock_client()
-    entry = await _setup_integration(hass, mock_client)
+    await _setup_integration(hass, mock_client)
 
     await hass.services.async_call(
         DOMAIN,
         "update_user_pin",
-        {"config_entry_id": entry.entry_id, "user_id": "user-001"},
+        {"user_id": "user-001"},
         blocking=True,
     )
 
     mock_client.update_user_pin.assert_called_once_with("user-001", None)
 
 
-async def test_service_invalid_config_entry(hass: HomeAssistant) -> None:
-    """Services raise ServiceValidationError for unknown config_entry_id."""
-    mock_client = _make_mock_client()
-    await _setup_integration(hass, mock_client)
+async def test_service_no_loaded_entry(hass: HomeAssistant) -> None:
+    """Services raise ServiceValidationError when no config entry is loaded."""
+    await async_setup(hass, {})
 
     with pytest.raises(ServiceValidationError):
         await hass.services.async_call(
             DOMAIN,
             "enable_user",
-            {"config_entry_id": "nonexistent-entry-id", "user_id": "user-001"},
+            {"user_id": "user-001"},
             blocking=True,
         )
