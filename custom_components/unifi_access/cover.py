@@ -45,7 +45,9 @@ async def async_setup_entry(
 class UnifiAccessCoverEntity(UnifiAccessDoorEntity, CoverEntity):
     """Unifi Access Cover Entity (garage door or gate)."""
 
-    _attr_supported_features = CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE
+    _attr_supported_features = (
+        CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE | CoverEntityFeature.STOP
+    )
     _attr_name = None
 
     def __init__(self, data: UnifiAccessData, door_id: str) -> None:
@@ -215,7 +217,7 @@ class UnifiAccessCoverEntity(UnifiAccessDoorEntity, CoverEntity):
         self._last_trigger_time = now
         self.door.obstruction_detected = False
 
-        await self._data.hub.client.unlock_door(self.door.id)
+        await self._data.hub.async_open_door(self.door.id)
 
         # Always start the opening timer on an explicit command — sensor state
         # at trigger time may be mid-travel from a preceding close cycle.
@@ -243,7 +245,7 @@ class UnifiAccessCoverEntity(UnifiAccessDoorEntity, CoverEntity):
         self._last_trigger_time = now
         self.door.obstruction_detected = False
 
-        await self._data.hub.client.unlock_door(self.door.id)
+        await self._data.hub.async_close_door(self.door.id)
 
         # Always start the closing timer on an explicit command — sensor state
         # at trigger time may be mid-travel from a preceding open cycle.
@@ -260,6 +262,14 @@ class UnifiAccessCoverEntity(UnifiAccessDoorEntity, CoverEntity):
             self._is_opening = False
             self._is_closing = False
             self._cancel_operation_timer()
+        self.async_write_ha_state()
+
+    async def async_stop_cover(self, **kwargs: Any) -> None:
+        """Stop the cover motor mid-travel (UGT AUX relay)."""
+        await self._data.hub.async_stop_door(self.door.id)
+        self._cancel_operation_timer()
+        self._is_opening = False
+        self._is_closing = False
         self.async_write_ha_state()
 
     def _handle_coordinator_update(self) -> None:

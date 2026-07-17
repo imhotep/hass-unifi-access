@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from homeassistant.components.cover import DOMAIN as COVER_DOMAIN
 from homeassistant.components.lock import DOMAIN as LOCK_DOMAIN, LockState
 from homeassistant.components.select import DOMAIN as SELECT_DOMAIN
 from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
@@ -552,3 +553,69 @@ class TestPollingMode:
         """Image entities should NOT exist in polling mode."""
         image_entities = [s for s in hass.states.async_all() if s.domain == "image"]
         assert len(image_entities) == 0
+
+
+# ---------------------------------------------------------------------------
+# Cover entity: open/close/stop send correct control_cmd
+# ---------------------------------------------------------------------------
+
+
+async def _switch_door_to_garage(hass: HomeAssistant) -> str:
+    """Switch door-001 to garage type and return the cover entity_id."""
+    registry = er.async_get(hass)
+    entity_type_id = registry.async_get_entity_id(
+        SELECT_DOMAIN, DOMAIN, "door-001_entity_type"
+    )
+    await hass.services.async_call(
+        SELECT_DOMAIN,
+        "select_option",
+        {"entity_id": entity_type_id, "option": "garage"},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+    return registry.async_get_entity_id("cover", DOMAIN, "door-001_cover")
+
+
+class TestCoverControlCommands:
+    """Cover open/close/stop pass the correct control_cmd to the API."""
+
+    async def test_open_cover_sends_open_cmd(
+        self, hass: HomeAssistant, setup_integration
+    ) -> None:
+        _, mock_client = setup_integration
+        cover_entity_id = await _switch_door_to_garage(hass)
+        assert cover_entity_id is not None
+
+        mock_client.unlock_door.reset_mock()
+        await hass.services.async_call(
+            COVER_DOMAIN, "open_cover", {"entity_id": cover_entity_id}, blocking=True
+        )
+        mock_client.unlock_door.assert_called_once_with("door-001", control_cmd="open")
+
+    async def test_close_cover_sends_close_cmd(
+        self, hass: HomeAssistant, setup_integration
+    ) -> None:
+        _, mock_client = setup_integration
+        cover_entity_id = await _switch_door_to_garage(hass)
+        assert cover_entity_id is not None
+
+        mock_client.unlock_door.reset_mock()
+        await hass.services.async_call(
+            COVER_DOMAIN, "close_cover", {"entity_id": cover_entity_id}, blocking=True
+        )
+        mock_client.unlock_door.assert_called_once_with(
+            "door-001", control_cmd="close"
+        )
+
+    async def test_stop_cover_sends_stop_cmd(
+        self, hass: HomeAssistant, setup_integration
+    ) -> None:
+        _, mock_client = setup_integration
+        cover_entity_id = await _switch_door_to_garage(hass)
+        assert cover_entity_id is not None
+
+        mock_client.unlock_door.reset_mock()
+        await hass.services.async_call(
+            COVER_DOMAIN, "stop_cover", {"entity_id": cover_entity_id}, blocking=True
+        )
+        mock_client.unlock_door.assert_called_once_with("door-001", control_cmd="stop")
