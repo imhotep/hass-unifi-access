@@ -350,6 +350,14 @@ class UnifiAccessHub:
             on_disconnect=on_disconnect,
         )
 
+    async def async_update_user_status(self, user_id: str, *, enabled: bool) -> None:
+        """Enable or disable a user."""
+        await self.client.update_user_status(user_id, enabled=enabled)
+
+    async def async_update_user_pin(self, user_id: str, pin: str | None) -> None:
+        """Update or remove a user's PIN."""
+        await self.client.update_user_pin(user_id, pin)
+
     async def async_close(self) -> None:
         """Close the API client (stops websocket)."""
         await self.client.close()

@@ -163,6 +163,70 @@ You are able to select one of the following rules via the `select` entity:
 - **lock_early**: locks the door if it's currently on an unlock schedule.
 - **lock_now**: locks the door if it's currently on an unlock schedule OR if it's unlocked temporarily via a locking rule.
 
+# User Management Actions
+
+Three actions let you manage user accounts directly from Home Assistant automations or Developer Tools. They are domain-level actions, not tied to any specific door.
+
+## Finding a `user_id`
+
+User IDs are UUIDs assigned by Unifi Access. You can find them in the Unifi Access web UI under **Users** (the ID appears in the URL when you open a user's profile), or from the Unifi Access API directly.
+
+## `unifi_access.enable_user`
+
+Enable a user's access credentials.
+
+```yaml
+action: unifi_access.enable_user
+data:
+  user_id: "abc123def456..."
+```
+
+## `unifi_access.disable_user`
+
+Disable a user's access credentials without deleting them.
+
+```yaml
+action: unifi_access.disable_user
+data:
+  user_id: "abc123def456..."
+```
+
+## `unifi_access.update_user_pin`
+
+Set or remove a user's PIN code. Omit `pin` (or leave it blank) to remove the existing PIN.
+
+```yaml
+# Set a PIN
+action: unifi_access.update_user_pin
+data:
+  user_id: "abc123def456..."
+  pin: "1234"
+```
+
+```yaml
+# Remove the PIN
+action: unifi_access.update_user_pin
+data:
+  user_id: "abc123def456..."
+```
+
+## Example: disable a user when a door is held open too long
+
+```yaml
+alias: Disable user on tailgate alarm
+triggers:
+  - platform: state
+    entity_id: binary_sensor.front_door_door_position_sensor
+    to: "on"
+    for:
+      minutes: 5
+actions:
+  - action: unifi_access.disable_user
+    data:
+      user_id: "abc123def456..."
+mode: single
+```
+
 # Example automations
 
 ## Unlock door
@@ -216,7 +280,6 @@ The Unifi Access API does *NOT* support door locking at the moment. You probably
 5. If you installed via HACS you can also uninstall the repository from HACS afterwards
 
 # Wishlist
-- door code via service
 
 # Troubleshooting
 
