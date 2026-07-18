@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.10] - 2026-07-17
+
+### Fixed
+- Bump `py-unifi-access` requirement to 1.5.0. Version 1.4.0 was never published to PyPI due to a CI race condition (two PRs merged simultaneously cancelled the publish job), making 3.0.9 uninstallable.
+
 ## [3.0.9] - 2026-07-17
 
 ### Added
