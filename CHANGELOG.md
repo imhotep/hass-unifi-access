@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.11] - 2026-07-17
+
+### Fixed
+- User management actions (`enable_user`, `disable_user`, `update_user_pin`) now work correctly. The underlying `py-unifi-access` library was using the wrong HTTP method (`PATCH`) and wrong status values (`active`/`inactive`) — the UniFi Access API only supports `GET`/`POST`/`PUT`/`DELETE`, and status values are `ACTIVE`/`DEACTIVATED`. The `update_user_pin` action was also sending to the wrong endpoint; it now uses `PUT /users/:id/pin_codes` to assign and `DELETE /users/:id/pin_codes` to remove. Requires `py-unifi-access==1.6.1`.
+
 ## [3.0.10] - 2026-07-17
 
 ### Fixed
