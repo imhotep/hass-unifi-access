@@ -175,6 +175,9 @@
       "evacuation": {
         "name": "Evacuation"
       },
+      "face_unlock": {
+        "name": "Face Unlock"
+      },
       "lockdown": {
         "name": "Lockdown"
       }
