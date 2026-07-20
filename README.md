@@ -178,7 +178,7 @@ When you change that select:
 
 - the choice is persisted for that door
 - Home Assistant updates only the affected entities instead of reloading the full integration
-- `Garage Door` and `Gate` create a `cover` entity with `open` / `close` actions
+- `Garage Door` and `Gate` create a `cover` entity with `open` / `close` / `stop` actions
 
 For `Garage Door` and `Gate` cover mode, the integration also adds:
 
@@ -186,7 +186,7 @@ For `Garage Door` and `Gate` cover mode, the integration also adds:
 - `Closing Timeout` (`number`)
 - `Clear Obstruction` (`button`)
 
-The cover entity uses the same UniFi Access momentary trigger as door unlock/open. The timeout helpers let Home Assistant infer whether the door is still opening or closing and expose an `obstruction_detected` attribute when the sensor state does not match the expected result.
+Open, close, and stop send the corresponding motor command (`control_cmd=open|close|stop`) directly to the UGT hub. The timeout helpers let Home Assistant infer whether the door is still opening or closing and expose an `obstruction_detected` attribute when the sensor state does not match the expected result.
 
 ## Face Unlock (UA-Intercom and other face-capable readers)
 
