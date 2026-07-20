@@ -20,6 +20,7 @@ from unifi_access_api import (
     ApiNotFoundError,
     BaseInfo,
     Device,
+    DeviceSettings,
     DeviceUpdate,
     Door,
     DoorLockRelayStatus,
@@ -82,6 +83,8 @@ class DoorState:
     doorbell_request_id: str | None = None
     thumbnail: bytes | None = None
     thumbnail_last_updated: datetime | None = None
+    device_settings: DeviceSettings | None = None
+    has_face_unlock: bool = False
 
     _event_listeners: dict[str, list[EventListener]] = field(
         default_factory=dict, repr=False
@@ -200,6 +203,8 @@ class UnifiAccessHub:
             # Populate hub_type from the devices API at startup instead of
             # waiting for a later device update websocket event.
             await self._async_map_hub_types()
+        else:
+            await self.async_refresh_device_settings()
         return self.doors
 
     @staticmethod
@@ -243,6 +248,32 @@ class UnifiAccessHub:
             "Hub type mapping: %s",
             {k: (v.hub_type, v.hub_id) for k, v in self.doors.items()},
         )
+
+        # Mark doors whose hub device supports face unlock, then fetch settings.
+        face_capable_capabilities = {"support_face", "identity_face_unlock"}
+        face_doors: list[tuple[str, str]] = []
+        for device in devices:
+            if not self._is_hub_device(device):
+                continue
+            caps = set(getattr(device, "capabilities", []))
+            if caps & face_capable_capabilities and device.location_id in self.doors:
+                self.doors[device.location_id].has_face_unlock = True
+                face_doors.append((device.location_id, device.id))
+
+        if face_doors:
+            results = await asyncio.gather(
+                *(self.client.get_device_settings(dev_id) for _, dev_id in face_doors),
+                return_exceptions=True,
+            )
+            for (door_id, _), result in zip(face_doors, results):
+                if isinstance(result, DeviceSettings):
+                    self.doors[door_id].device_settings = result
+                else:
+                    _LOGGER.warning(
+                        "Could not fetch device settings for door %s: %s",
+                        door_id,
+                        result,
+                    )
 
     def _resolve_door_state(
         self,
@@ -369,6 +400,43 @@ class UnifiAccessHub:
     async def async_stop_door(self, door_id: str) -> None:
         """Send stop command to a UGT gate/garage door."""
         await self.client.unlock_door(door_id, control_cmd="stop")
+
+    async def async_set_face_unlock(self, door_id: str, *, enabled: bool) -> None:
+        """Enable or disable face unlock on a device."""
+        state = self.doors[door_id]
+        value = "yes" if enabled else "no"
+        await self.client.put_device_settings(
+            state.hub_id,
+            {"face": {"enabled": value}},
+        )
+        if state.device_settings is not None:
+            updated_face = state.device_settings.access_methods.face.model_copy(
+                update={"enabled": value}
+            )
+            updated_methods = state.device_settings.access_methods.model_copy(
+                update={"face": updated_face}
+            )
+            state.device_settings = state.device_settings.model_copy(
+                update={"access_methods": updated_methods}
+            )
+        self._notify_doors_updated()
+
+    async def async_refresh_device_settings(self) -> None:
+        """Re-fetch device settings for all face-capable doors."""
+        face_doors = [
+            (door_id, state.hub_id)
+            for door_id, state in self.doors.items()
+            if state.has_face_unlock and state.hub_id
+        ]
+        if not face_doors:
+            return
+        results = await asyncio.gather(
+            *(self.client.get_device_settings(hub_id) for _, hub_id in face_doors),
+            return_exceptions=True,
+        )
+        for (door_id, _), result in zip(face_doors, results):
+            if isinstance(result, DeviceSettings):
+                self.doors[door_id].device_settings = result
 
     async def async_close(self) -> None:
         """Close the API client (stops websocket)."""

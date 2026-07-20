@@ -21,6 +21,7 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from unifi_access_api import (
     Device,
+    DeviceSettings,
     Door,
     DoorLockRelayStatus,
     DoorLockRuleStatus,
@@ -28,6 +29,7 @@ from unifi_access_api import (
     DoorPositionStatus,
     EmergencyStatus,
 )
+from unifi_access_api.models.device_settings import AccessMethods, FaceAccessMethod
 
 from custom_components.unifi_access.const import DOMAIN
 
@@ -112,6 +114,31 @@ SAMPLE_DEVICES = [
     ),
 ]
 
+SAMPLE_DEVICES_WITH_FACE = [
+    Device(
+        id="hub-intercom-001",
+        type="UA-Intercom",
+        location_id="door-001",
+        capabilities=["is_hub", "support_face", "identity_face_unlock"],
+    ),
+    Device(
+        id="hub-mini-001",
+        type="UA-Hub-Door-Mini",
+        location_id="door-002",
+        capabilities=["is_hub"],
+    ),
+]
+
+SAMPLE_DEVICE_SETTINGS_FACE_OFF = DeviceSettings(
+    device_id="hub-intercom-001",
+    access_methods=AccessMethods(face=FaceAccessMethod(enabled="no")),
+)
+
+SAMPLE_DEVICE_SETTINGS_FACE_ON = DeviceSettings(
+    device_id="hub-intercom-001",
+    access_methods=AccessMethods(face=FaceAccessMethod(enabled="yes")),
+)
+
 SAMPLE_DEVICE_DOOR_MAP = {device.id: device.location_id for device in SAMPLE_DEVICES}
 
 SAMPLE_LOCK_RULE_STATUS = DoorLockRuleStatus(
@@ -167,6 +194,8 @@ def mock_api_client() -> AsyncMock:
     client.get_device_door_map = AsyncMock(return_value=SAMPLE_DEVICE_DOOR_MAP)
     client.resolve_door_id = MagicMock(side_effect=SAMPLE_DEVICE_DOOR_MAP.get)
     client.get_thumbnail = AsyncMock(return_value=b"fake-image-bytes")
+    client.get_device_settings = AsyncMock(return_value=SAMPLE_DEVICE_SETTINGS_FACE_OFF)
+    client.put_device_settings = AsyncMock()
     client.start_websocket = MagicMock()
     client.close = AsyncMock()
     return client
