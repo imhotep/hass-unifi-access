@@ -32,24 +32,31 @@
 
 ## Core integration vs. this HACS integration
 
-Home Assistant now includes a core UniFi Access integration. For most users, the core integration is the recommended starting point.
+Home Assistant now includes a [core UniFi Access integration](https://www.home-assistant.io/integrations/unifi_access/). For most users, the core integration is the recommended starting point — it has met Home Assistant's Platinum quality requirements and is reviewed by core maintainers.
 
-The core integration has met Home Assistant's Platinum quality requirements and any changes to it are reviewed by Home Assistant core maintainers. This provides stronger long-term stability, consistency with Home Assistant architecture, and better alignment with the Home Assistant entity model.
+This HACS integration exists for users who need features that are not available in core, or that don't fit easily into the architectural rules required for Home Assistant core integrations.
 
-This HACS integration will continue to be maintained for the foreseeable future. It exists for users who prefer its current behavior, need features that are not yet available in core, or want functionality that does not fit easily into the architectural rules required for Home Assistant core integrations.
+**Use the core integration** if you want the most official, reviewed, and Home Assistant-native experience.  
+**Use this HACS integration** if you specifically need one of the extras listed below.
 
-In short:
+### Feature comparison
 
-Use the core integration if you want the most official, reviewed, and Home Assistant-native experience.
-Use this HACS integration if you specifically need one of the differences listed below.
-
-Current differences
-The core integration uses button entities/actions for door operations. This follows Home Assistant's entity model more strictly, especially because the UniFi Access API does not currently support locking doors.
-This HACS integration exposes doors as lock entities for convenience. You can unlock/open a door, but locking is unsupported by the UniFi Access API and will only log a warning.
-For UGT doors, this integration can also expose the door as a `cover` entity (`Garage Door` or `Gate`) instead of a `lock`, using a per-door `Entity Type` select.
-Changing a UGT door's entity type updates the relevant entities in place without unloading and reloading the whole integration.
-The core integration supports auto-discovery. This HACS integration does not.
-The core integration may require additional Home Assistant helpers/templates or automations for some workflows that this HACS integration exposes more directly.
+| Feature | Core integration | This HACS integration |
+|---|---|---|
+| Door unlock | `button` entity | `lock` entity (unlock only; locking logs a warning) |
+| Door position sensor | ✅ | ✅ |
+| Doorbell event entity | ✅ | ✅ |
+| Access event entity | ✅ | ✅ |
+| Evacuation / Lockdown switches | ✅ | ✅ |
+| Door lock rules (select + sensor) | ✅ (`set_lock_rule` action) | ✅ (select, number, and sensor entities) |
+| Door thumbnail image | ✅ | ✅ |
+| WebSocket push updates | ✅ | ✅ |
+| Auto-discovery | ✅ | ❌ |
+| Polling mode (for UA controller < 1.90) | ❌ | ✅ |
+| UGT gate / garage door cover entities | ❌ | ✅ (open / close / stop) |
+| UGT entity type selector (lock ↔ garage ↔ gate) | ❌ | ✅ (live swap, no restart needed) |
+| Face Unlock switch (UA-Intercom) | ❌ | ✅ |
+| User management actions (enable / disable / update PIN) | ❌ | ✅ |
 
 # Supported hardware
 - Unifi Access Hub (UAH) :white_check_mark:

@@ -389,6 +389,18 @@ class UnifiAccessHub:
         """Update or remove a user's PIN."""
         await self.client.update_user_pin(user_id, pin)
 
+    async def async_open_door(self, door_id: str) -> None:
+        """Send open command to a UGT gate/garage door."""
+        await self.client.unlock_door(door_id, control_cmd="open")
+
+    async def async_close_door(self, door_id: str) -> None:
+        """Send close command to a UGT gate/garage door."""
+        await self.client.unlock_door(door_id, control_cmd="close")
+
+    async def async_stop_door(self, door_id: str) -> None:
+        """Send stop command to a UGT gate/garage door."""
+        await self.client.unlock_door(door_id, control_cmd="stop")
+
     async def async_set_face_unlock(self, door_id: str, *, enabled: bool) -> None:
         """Enable or disable face unlock on a device."""
         state = self.doors[door_id]
