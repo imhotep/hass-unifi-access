@@ -295,8 +295,6 @@ The Unifi Access API does *NOT* support door locking at the moment. You probably
 4. Restart Home Assistant
 5. If you installed via HACS you can also uninstall the repository from HACS afterwards
 
-# Wishlist
-
 # Troubleshooting
 
 ## Invalid API Key 
