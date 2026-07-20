@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.12] - 2026-07-19
+
+### Added
+- `Face Unlock` switch entity (`switch.<door>_face_unlock`) for readers that report face unlock capability (e.g. UA-Intercom). The switch enables or disables biometric face unlock per door and is only created for capable devices. State is fetched at startup and updated optimistically on toggle; polling mode refreshes it on each cycle. Requires `py-unifi-access==1.6.1`.
+
 ## [3.0.11] - 2026-07-17
 
 ### Fixed
