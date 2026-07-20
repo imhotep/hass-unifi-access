@@ -271,6 +271,66 @@ class TestHubWebSocketHandlers:
         assert len(events_received) == 1
         hub.on_doors_updated.assert_called_once()
 
+    async def test_handle_remote_view_guard_ids_included_for_intercom(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """guard_ids included in event attributes for UA-Intercom with non-empty list."""
+        hub.doors["door-001"].hub_type = "UA-Intercom"
+        msg = MagicMock()
+        msg.data.door_name = "Front Door"
+        msg.data.request_id = "req-abc"
+        msg.data.door_guard_ids = ["guard-uuid-1", "guard-uuid-2"]
+
+        events_received: list[tuple[str, dict]] = []
+        hub.doors["door-001"].add_event_listener(
+            "doorbell_press", lambda e, a: events_received.append((e, a))
+        )
+
+        await hub._handle_remote_view(msg)
+
+        assert len(events_received) == 1
+        assert events_received[0][1]["guard_ids"] == ["guard-uuid-1", "guard-uuid-2"]
+
+    async def test_handle_remote_view_guard_ids_excluded_when_empty(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """guard_ids not added when door_guard_ids is empty."""
+        hub.doors["door-001"].hub_type = "UA-Intercom"
+        msg = MagicMock()
+        msg.data.door_name = "Front Door"
+        msg.data.request_id = "req-abc"
+        msg.data.door_guard_ids = []
+
+        events_received: list[tuple[str, dict]] = []
+        hub.doors["door-001"].add_event_listener(
+            "doorbell_press", lambda e, a: events_received.append((e, a))
+        )
+
+        await hub._handle_remote_view(msg)
+
+        assert len(events_received) == 1
+        assert "guard_ids" not in events_received[0][1]
+
+    async def test_handle_remote_view_guard_ids_excluded_for_non_intercom(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """guard_ids not added for non-intercom hub types even if data is present."""
+        hub.doors["door-001"].hub_type = "UAH"
+        msg = MagicMock()
+        msg.data.door_name = "Front Door"
+        msg.data.request_id = "req-abc"
+        msg.data.door_guard_ids = ["guard-uuid-1"]
+
+        events_received: list[tuple[str, dict]] = []
+        hub.doors["door-001"].add_event_listener(
+            "doorbell_press", lambda e, a: events_received.append((e, a))
+        )
+
+        await hub._handle_remote_view(msg)
+
+        assert len(events_received) == 1
+        assert "guard_ids" not in events_received[0][1]
+
     async def test_handle_remote_view_change(self, hub: UnifiAccessHub) -> None:
         """Test doorbell press stop handler."""
         hub.doors["door-001"].doorbell_request_id = "req-abc"

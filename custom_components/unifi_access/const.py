@@ -12,6 +12,9 @@ DOOR_TYPES = [DOOR_TYPE_LOCK, DOOR_TYPE_GARAGE, DOOR_TYPE_GATE]
 STORAGE_KEY = "unifi_access_entity_types"
 STORAGE_VERSION = 1
 
+# Hub types that support the intercom guard ID feature (UA-Intercom directory)
+INTERCOM_HUB_TYPES: frozenset[str] = frozenset({"UA-Intercom", "UA-G3-Intercom"})
+
 # Doorbell event types
 DOORBELL_EVENT = "doorbell_press"
 DOORBELL_START_EVENT = "unifi_access_doorbell_start"

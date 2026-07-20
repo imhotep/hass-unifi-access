@@ -135,6 +135,7 @@ One `Doorbell Press` entity is created per door. It updates when the integration
 - `door_name`
 - `door_id`
 - `type`
+- `guard_ids` (list of UUIDs) — IDs of the tenant/unit that rang the doorbell. **UA-Intercom only**, only present when non-empty. Cross-reference with the UniFi Access Users API to resolve to names.
 
 For hardware doorbells, the integration may emit `unifi_access_doorbell_stop` automatically after a short delay if no explicit stop event is received.
 

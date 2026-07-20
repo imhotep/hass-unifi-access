@@ -51,6 +51,7 @@ from .const import (
     DOOR_TYPE_LOCK,
     DOORBELL_START_EVENT,
     DOORBELL_STOP_EVENT,
+    INTERCOM_HUB_TYPES,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -523,11 +524,13 @@ class UnifiAccessHub:
             return
 
         state.doorbell_request_id = update.data.request_id
-        event_attributes = {
+        event_attributes: dict[str, object] = {
             "door_name": state.name,
             "door_id": state.id,
             "type": DOORBELL_START_EVENT,
         }
+        if state.hub_type in INTERCOM_HUB_TYPES and update.data.door_guard_ids:
+            event_attributes["guard_ids"] = update.data.door_guard_ids
         _LOGGER.info(
             "Doorbell press on %s request id %s",
             door_name,
