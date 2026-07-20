@@ -4,6 +4,32 @@
 - If you have Unifi Access set up with UID this will likely *NOT* work although some people have reported success using the free version of UID. 
 - _Camera Feeds are currently not offered by the API and therefore **NOT** supported_.
 
+## Table of Contents
+
+- [Core integration vs. this HACS integration](#core-integration-vs-this-hacs-integration)
+- [Supported hardware](#supported-hardware)
+- [Getting Unifi Access API Token](#getting-unifi-access-api-token)
+- [Installation (HACS)](#installation-hacs)
+- [Installation (manual)](#installation-manual)
+- [Events](#events)
+  - [Doorbell Press](#doorbell-press)
+  - [Door Event](#door-event)
+  - [Evacuation/Lockdown](#evacuationlockdown)
+  - [Thumbnail](#thumbnail)
+  - [UGT garage door / gate support](#ugt-garage-door--gate-support)
+  - [Face Unlock](#face-unlock-ua-intercom-and-other-face-capable-readers)
+  - [Door lock rules](#door-lock-rules-only-applies-to-uah)
+- [User Management Actions](#user-management-actions)
+  - [Finding a user_id](#finding-a-user_id)
+  - [enable_user](#unifi_accessenable_user)
+  - [disable_user](#unifi_accessdisable_user)
+  - [update_user_pin](#unifi_accessupdate_user_pin)
+- [Example automations](#example-automations)
+- [API Limitations](#api-limitations)
+- [Removing the integration](#removing-the-integration)
+- [Troubleshooting](#troubleshooting)
+- [Support my work](#support-my-work)
+
 ## Core integration vs. this HACS integration
 
 Home Assistant now includes a core UniFi Access integration. For most users, the core integration is the recommended starting point.
