@@ -60,6 +60,7 @@ The core integration may require additional Home Assistant helpers/templates or 
         - a `cover` entity
         - `Opening Timeout` and `Closing Timeout` (`number`) helpers
         - a `Clear Obstruction` (`button`) helper
+    - For **face-capable readers** (e.g. UA-Intercom): a `Face Unlock` (`switch`) entity to enable or disable biometric face unlock per door.
 
 
 # Installation (manual)
@@ -82,6 +83,7 @@ The core integration may require additional Home Assistant helpers/templates or 
         - a `cover` entity
         - `Opening Timeout` and `Closing Timeout` (`number`) helpers
         - a `Clear Obstruction` (`button`) helper
+    - For **face-capable readers** (e.g. UA-Intercom): a `Face Unlock` (`switch`) entity to enable or disable biometric face unlock per door.
 
 # Events
 When websocket mode is enabled (`Use polling` is **not** selected), this integration creates two Home Assistant `event` entities for each door:
@@ -152,6 +154,20 @@ For `Garage Door` and `Gate` cover mode, the integration also adds:
 - `Clear Obstruction` (`button`)
 
 The cover entity uses the same UniFi Access momentary trigger as door unlock/open. The timeout helpers let Home Assistant infer whether the door is still opening or closing and expose an `obstruction_detected` attribute when the sensor state does not match the expected result.
+
+## Face Unlock (UA-Intercom and other face-capable readers)
+
+For readers that report face unlock capability (e.g. UA-Intercom), the integration creates a `Face Unlock` switch entity per door:
+
+- **Entity ID**: `switch.<door_name>_face_unlock`
+- **Icon**: `mdi:face-recognition`
+- **State**: reflects the current `access_methods.face.enabled` setting from the reader
+- **Turn on**: enables biometric face unlock on that reader
+- **Turn off**: disables biometric face unlock on that reader
+
+The switch only appears for readers that support face unlock. Readers without this capability (e.g. standard UAH, UGT) will not have this entity.
+
+State is fetched at startup and updated optimistically on toggle. In polling mode, the state is also refreshed on each poll cycle.
 
 ### Door lock rules (only applies to UAH)
 The following entities will be created: `select`, `number` and 2 `sensor` entities (end time and current rule).
@@ -278,8 +294,6 @@ The Unifi Access API does *NOT* support door locking at the moment. You probably
 3. Select **Delete**
 4. Restart Home Assistant
 5. If you installed via HACS you can also uninstall the repository from HACS afterwards
-
-# Wishlist
 
 # Troubleshooting
 
