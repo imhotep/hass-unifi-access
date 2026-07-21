@@ -529,7 +529,7 @@ class UnifiAccessHub:
             "door_id": state.id,
             "type": DOORBELL_START_EVENT,
         }
-        if state.hub_type in INTERCOM_HUB_TYPES and update.data.door_guard_ids:
+        if update.data.device_type in INTERCOM_HUB_TYPES and update.data.door_guard_ids:
             event_attributes["guard_ids"] = update.data.door_guard_ids
         _LOGGER.info(
             "Doorbell press on %s request id %s",

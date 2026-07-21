@@ -274,11 +274,11 @@ class TestHubWebSocketHandlers:
     async def test_handle_remote_view_guard_ids_included_for_intercom(
         self, hub: UnifiAccessHub
     ) -> None:
-        """guard_ids included in event attributes for UA-Intercom with non-empty list."""
-        hub.doors["door-001"].hub_type = "UA-Intercom"
+        """guard_ids included when the reporting device_type is UA-Intercom."""
         msg = MagicMock()
         msg.data.door_name = "Front Door"
         msg.data.request_id = "req-abc"
+        msg.data.device_type = "UA-Intercom"
         msg.data.door_guard_ids = ["guard-uuid-1", "guard-uuid-2"]
 
         events_received: list[tuple[str, dict]] = []
@@ -295,10 +295,10 @@ class TestHubWebSocketHandlers:
         self, hub: UnifiAccessHub
     ) -> None:
         """guard_ids not added when door_guard_ids is empty."""
-        hub.doors["door-001"].hub_type = "UA-Intercom"
         msg = MagicMock()
         msg.data.door_name = "Front Door"
         msg.data.request_id = "req-abc"
+        msg.data.device_type = "UA-Intercom"
         msg.data.door_guard_ids = []
 
         events_received: list[tuple[str, dict]] = []
@@ -314,11 +314,11 @@ class TestHubWebSocketHandlers:
     async def test_handle_remote_view_guard_ids_excluded_for_non_intercom(
         self, hub: UnifiAccessHub
     ) -> None:
-        """guard_ids not added for non-intercom hub types even if data is present."""
-        hub.doors["door-001"].hub_type = "UAH"
+        """guard_ids not added when the reporting device_type is not an intercom."""
         msg = MagicMock()
         msg.data.door_name = "Front Door"
         msg.data.request_id = "req-abc"
+        msg.data.device_type = "UAH"
         msg.data.door_guard_ids = ["guard-uuid-1"]
 
         events_received: list[tuple[str, dict]] = []
@@ -330,6 +330,28 @@ class TestHubWebSocketHandlers:
 
         assert len(events_received) == 1
         assert "guard_ids" not in events_received[0][1]
+
+    async def test_handle_remote_view_guard_ids_intercom_with_separate_lock_hub(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """guard_ids included when door's hub_type is a lock hub but the remote_view
+        payload reports device_type=UA-Intercom (Intercom + separate lock hub topology)."""
+        hub.doors["door-001"].hub_type = "UA-Hub-Door-Mini"
+        msg = MagicMock()
+        msg.data.door_name = "Front Door"
+        msg.data.request_id = "req-abc"
+        msg.data.device_type = "UA-Intercom"
+        msg.data.door_guard_ids = ["guard-uuid-1"]
+
+        events_received: list[tuple[str, dict]] = []
+        hub.doors["door-001"].add_event_listener(
+            "doorbell_press", lambda e, a: events_received.append((e, a))
+        )
+
+        await hub._handle_remote_view(msg)
+
+        assert len(events_received) == 1
+        assert events_received[0][1]["guard_ids"] == ["guard-uuid-1"]
 
     async def test_handle_remote_view_change(self, hub: UnifiAccessHub) -> None:
         """Test doorbell press stop handler."""
