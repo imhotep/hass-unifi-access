@@ -719,7 +719,7 @@ class UnifiAccessHub:
         method_entries = update.data.metadata.opened_method
         method = method_entries[0].display_name if method_entries else ""
 
-        event_attributes = {
+        event_attributes: dict[str, object] = {
             "door_name": state.name,
             "door_id": state.id,
             "actor": update.data.metadata.actor.display_name,
@@ -728,6 +728,10 @@ class UnifiAccessHub:
             "method": method,
             "result": update.data.result,
         }
+        reader_entries = update.data.metadata.reader_capture
+        if reader_entries:
+            event_attributes["reader_id"] = reader_entries[0].id
+            event_attributes["reader_name"] = reader_entries[0].display_name
         _LOGGER.info(
             "Insight: %s on %s (%s) by %s via %s: %s",
             update.data.event_type,

@@ -393,6 +393,7 @@ class TestHubWebSocketHandlers:
         msg.data.metadata.authentication.display_name = "FACE"
         msg.data.metadata.opened_method = [MagicMock(display_name="face")]
         msg.data.metadata.opened_direction = [MagicMock(display_name="entry")]
+        msg.data.metadata.reader_capture = []
         msg.data.event_type = "access.door.unlock"
         msg.data.result = "ACCESS"
 
@@ -409,7 +410,60 @@ class TestHubWebSocketHandlers:
         assert events_received[0][1]["type"] == "unifi_access_entry"
         assert events_received[0][1]["method"] == "face"
         assert events_received[0][1]["result"] == "ACCESS"
+        assert "reader_id" not in events_received[0][1]
         hub.on_doors_updated.assert_not_called()
+
+    async def test_handle_insights_add_reader_capture_included(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """reader_id and reader_name are included when reader_capture is non-empty."""
+        msg = MagicMock()
+        msg.data.metadata.door = [MagicMock(id="door-001")]
+        msg.data.metadata.actor.display_name = "Raphael"
+        msg.data.metadata.authentication.display_name = "NFC"
+        msg.data.metadata.opened_method = [MagicMock(display_name="nfc")]
+        msg.data.metadata.opened_direction = [MagicMock(display_name="entry")]
+        msg.data.metadata.reader_capture = [
+            MagicMock(id="AA:BB:CC:DD:EE:FF", display_name="UA-G2-PRO-BB7A")
+        ]
+        msg.data.event_type = "access.door.unlock"
+        msg.data.result = "ACCESS"
+
+        events_received = []
+        hub.doors["door-001"].add_event_listener(
+            "access", lambda e, a: events_received.append(a)
+        )
+
+        await hub._handle_insights_add(msg)
+
+        assert len(events_received) == 1
+        assert events_received[0]["reader_id"] == "AA:BB:CC:DD:EE:FF"
+        assert events_received[0]["reader_name"] == "UA-G2-PRO-BB7A"
+
+    async def test_handle_insights_add_reader_capture_empty(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """reader_id and reader_name are omitted when reader_capture is empty."""
+        msg = MagicMock()
+        msg.data.metadata.door = [MagicMock(id="door-001")]
+        msg.data.metadata.actor.display_name = "Raphael"
+        msg.data.metadata.authentication.display_name = "NFC"
+        msg.data.metadata.opened_method = [MagicMock(display_name="nfc")]
+        msg.data.metadata.opened_direction = [MagicMock(display_name="entry")]
+        msg.data.metadata.reader_capture = []
+        msg.data.event_type = "access.door.unlock"
+        msg.data.result = "ACCESS"
+
+        events_received = []
+        hub.doors["door-001"].add_event_listener(
+            "access", lambda e, a: events_received.append(a)
+        )
+
+        await hub._handle_insights_add(msg)
+
+        assert len(events_received) == 1
+        assert "reader_id" not in events_received[0]
+        assert "reader_name" not in events_received[0]
 
     async def test_handle_insights_add_unknown_door(self, hub: UnifiAccessHub) -> None:
         """Ignore insights for unknown doors."""
@@ -431,6 +485,7 @@ class TestHubWebSocketHandlers:
         msg.data.metadata.authentication.display_name = "FACE"
         msg.data.metadata.opened_method = [MagicMock(display_name="face")]
         msg.data.metadata.opened_direction = [MagicMock(display_name="entry")]
+        msg.data.metadata.reader_capture = []
         msg.data.event_type = "access.door.unlock"
         msg.data.result = "ACCESS"
 
@@ -461,6 +516,7 @@ class TestHubWebSocketHandlers:
         insight_msg.data.metadata.authentication.display_name = "FACE"
         insight_msg.data.metadata.opened_method = [MagicMock(display_name="face")]
         insight_msg.data.metadata.opened_direction = [MagicMock(display_name="entry")]
+        insight_msg.data.metadata.reader_capture = []
         insight_msg.data.event_type = "access.door.unlock"
         insight_msg.data.result = "ACCESS"
 
@@ -737,6 +793,7 @@ class TestHubWebSocketHandlers:
         msg.data.metadata.authentication.display_name = "NFC"
         msg.data.metadata.opened_method = [MagicMock(display_name="nfc")]
         msg.data.metadata.opened_direction = [MagicMock(display_name="")]
+        msg.data.metadata.reader_capture = []
         msg.data.event_type = "access.door.unlock"
         msg.data.result = "ACCESS"
 
@@ -761,6 +818,7 @@ class TestHubWebSocketHandlers:
         msg.data.metadata.authentication.display_name = "NFC"
         msg.data.metadata.opened_method = [MagicMock(display_name="nfc")]
         msg.data.metadata.opened_direction = [MagicMock(display_name="denied")]
+        msg.data.metadata.reader_capture = []
         msg.data.event_type = "access.door.unlock"
         msg.data.result = "ACCESS"
 
