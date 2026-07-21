@@ -147,3 +147,10 @@ Sample data fixtures live in `tests/conftest.py`. Add new sample devices/setting
 ## Library dependency
 
 `manifest.json` pins the exact py-unifi-access version. Always update it when bumping the library. The hass venv must have the matching version installed — install local dev builds with `pip install -e`.
+
+## Creating a release
+
+1. Update `CHANGELOG.md` — move items from `[Unreleased]` into a new dated version section.
+2. Bump `"version"` in `manifest.json`.
+3. Commit and push both files.
+4. Create the GitHub release with `gh release create`.

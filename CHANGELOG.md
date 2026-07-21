@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.14] - 2026-07-21
+
 ### Added
-- `reader_id` and `reader_name` attributes on Door Event entities. When the controller reports which physical reader processed an access event, these fields expose the reader's MAC/device ID and display name (e.g. `UA-G2-PRO-BB7A`). Useful for automations that need to distinguish between multiple readers on the same door (e.g. inside vs. outside). Only present when the controller provides reader data; omitted otherwise.
+- `reader_id` and `reader_name` attributes on Door Event entities, identifying which physical reader processed the event. Only present when the controller reports reader data.
+
+### Fixed
+- `guard_ids` now correctly appears on doorbell events for UA-Intercom + separate lock hub topologies (e.g. UA-Intercom paired with UA-Hub-Door-Mini). The check now uses the event payload's `device_type` instead of the door's registered hub type.
 
 ## [3.0.13] - 2026-07-20
 
