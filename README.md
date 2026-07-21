@@ -137,6 +137,8 @@ One `Doorbell Press` entity is created per door. It updates when the integration
 - `type`
 - `guard_ids` (list of UUIDs) — IDs of the tenant/unit that rang the doorbell. **UA-Intercom only**, only present when non-empty. Cross-reference with the UniFi Access Users API to resolve to names.
 
+> **Note:** `guard_ids` and other event metadata are carried on the HA event itself, not on the entity's state attributes. They are only visible in Developer Tools → Events (not States), and are accessed in automations via `trigger.event.data.guard_ids`. See the [example automation](#use-doorbell-guard-ids-in-an-automation) below.
+
 For hardware doorbells, the integration may emit `unifi_access_doorbell_stop` automatically after a short delay if no explicit stop event is received.
 
 ## Door Event
@@ -296,6 +298,28 @@ action:
     data: {}
     target:
       device_id: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+mode: single
+```
+
+## Use doorbell guard IDs in an automation
+
+`guard_ids` is available on the `unifi_access_doorbell_start` event (UA-Intercom only). Access it via `trigger.event.data` — it is not visible in the entity's state attributes.
+
+```yaml
+alias: Notify on doorbell ring with tenant ID
+triggers:
+  - platform: event
+    event_type: unifi_access_doorbell_start
+variables:
+  door_name: "{{ trigger.event.data.door_name | default('Unknown door') }}"
+  guard_ids: "{{ trigger.event.data.get('guard_ids', []) }}"
+actions:
+  - action: notify.mobile_app_my_phone
+    data:
+      title: Doorbell
+      message: >
+        {{ door_name }} rang.
+        {% if guard_ids %}Tenant ID: {{ guard_ids | join(', ') }}.{% endif %}
 mode: single
 ```
 
