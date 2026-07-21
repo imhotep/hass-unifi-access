@@ -135,6 +135,7 @@ One `Doorbell Press` entity is created per door. It updates when the integration
 - `door_name`
 - `door_id`
 - `type`
+- `guard_ids` (list of UUIDs) — IDs of the tenant/unit that rang the doorbell. **UA-Intercom only**, only present when non-empty. Cross-reference with the UniFi Access Users API to resolve to names.
 
 For hardware doorbells, the integration may emit `unifi_access_doorbell_stop` automatically after a short delay if no explicit stop event is received.
 
@@ -149,11 +150,13 @@ One `Door Event` entity is created per door. It updates whenever the integration
 ### Event metadata
 - `door_name`
 - `door_id`
-- `actor` # the user tied to the event, when available
-- `authentication` # authentication source reported by the controller
-- `method` # opened method, when provided by the controller
+- `actor` — the user tied to the event, when available
+- `authentication` — authentication source reported by the controller
+- `method` — opened method, when provided by the controller
 - `type`
-- `result` # examples: `ACCESS`, `BLOCKED`, `INCOMPLETE`
+- `result` — examples: `ACCESS`, `BLOCKED`, `INCOMPLETE`
+- `reader_id` — MAC address / device ID of the reader that processed the event. Only present when the controller reports reader data.
+- `reader_name` — display name of that reader (e.g. `UA-G2-PRO-BB7A`). Only present when the controller reports reader data.
 
 #### Warning regarding Door Events
 Door events are using an undocumented API. Sadly, in September 2025, the Unifi Access API introduced some bugs that we have worked around but these events are still not 100% reliable depending on your hub. I recommend using the [Alarm Manager webhooks](https://github.com/imhotep/hass-unifi-access/issues/185#issuecomment-3895814140) if you need a more reliable way to automate based on door events.

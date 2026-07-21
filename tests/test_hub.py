@@ -271,6 +271,88 @@ class TestHubWebSocketHandlers:
         assert len(events_received) == 1
         hub.on_doors_updated.assert_called_once()
 
+    async def test_handle_remote_view_guard_ids_included_for_intercom(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """guard_ids included when the reporting device_type is UA-Intercom."""
+        msg = MagicMock()
+        msg.data.door_name = "Front Door"
+        msg.data.request_id = "req-abc"
+        msg.data.device_type = "UA-Intercom"
+        msg.data.door_guard_ids = ["guard-uuid-1", "guard-uuid-2"]
+
+        events_received: list[tuple[str, dict]] = []
+        hub.doors["door-001"].add_event_listener(
+            "doorbell_press", lambda e, a: events_received.append((e, a))
+        )
+
+        await hub._handle_remote_view(msg)
+
+        assert len(events_received) == 1
+        assert events_received[0][1]["guard_ids"] == ["guard-uuid-1", "guard-uuid-2"]
+
+    async def test_handle_remote_view_guard_ids_excluded_when_empty(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """guard_ids not added when door_guard_ids is empty."""
+        msg = MagicMock()
+        msg.data.door_name = "Front Door"
+        msg.data.request_id = "req-abc"
+        msg.data.device_type = "UA-Intercom"
+        msg.data.door_guard_ids = []
+
+        events_received: list[tuple[str, dict]] = []
+        hub.doors["door-001"].add_event_listener(
+            "doorbell_press", lambda e, a: events_received.append((e, a))
+        )
+
+        await hub._handle_remote_view(msg)
+
+        assert len(events_received) == 1
+        assert "guard_ids" not in events_received[0][1]
+
+    async def test_handle_remote_view_guard_ids_excluded_for_non_intercom(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """guard_ids not added when the reporting device_type is not an intercom."""
+        msg = MagicMock()
+        msg.data.door_name = "Front Door"
+        msg.data.request_id = "req-abc"
+        msg.data.device_type = "UAH"
+        msg.data.door_guard_ids = ["guard-uuid-1"]
+
+        events_received: list[tuple[str, dict]] = []
+        hub.doors["door-001"].add_event_listener(
+            "doorbell_press", lambda e, a: events_received.append((e, a))
+        )
+
+        await hub._handle_remote_view(msg)
+
+        assert len(events_received) == 1
+        assert "guard_ids" not in events_received[0][1]
+
+    async def test_handle_remote_view_guard_ids_intercom_with_separate_lock_hub(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """guard_ids included when door's hub_type is a lock hub but the remote_view
+        payload reports device_type=UA-Intercom (Intercom + separate lock hub topology)."""
+        hub.doors["door-001"].hub_type = "UA-Hub-Door-Mini"
+        msg = MagicMock()
+        msg.data.door_name = "Front Door"
+        msg.data.request_id = "req-abc"
+        msg.data.device_type = "UA-Intercom"
+        msg.data.door_guard_ids = ["guard-uuid-1"]
+
+        events_received: list[tuple[str, dict]] = []
+        hub.doors["door-001"].add_event_listener(
+            "doorbell_press", lambda e, a: events_received.append((e, a))
+        )
+
+        await hub._handle_remote_view(msg)
+
+        assert len(events_received) == 1
+        assert events_received[0][1]["guard_ids"] == ["guard-uuid-1"]
+
     async def test_handle_remote_view_change(self, hub: UnifiAccessHub) -> None:
         """Test doorbell press stop handler."""
         hub.doors["door-001"].doorbell_request_id = "req-abc"
@@ -333,6 +415,7 @@ class TestHubWebSocketHandlers:
         msg.data.metadata.authentication.display_name = "FACE"
         msg.data.metadata.opened_method = [MagicMock(display_name="face")]
         msg.data.metadata.opened_direction = [MagicMock(display_name="entry")]
+        msg.data.metadata.reader_capture = []
         msg.data.event_type = "access.door.unlock"
         msg.data.result = "ACCESS"
 
@@ -349,7 +432,60 @@ class TestHubWebSocketHandlers:
         assert events_received[0][1]["type"] == "unifi_access_entry"
         assert events_received[0][1]["method"] == "face"
         assert events_received[0][1]["result"] == "ACCESS"
+        assert "reader_id" not in events_received[0][1]
         hub.on_doors_updated.assert_not_called()
+
+    async def test_handle_insights_add_reader_capture_included(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """reader_id and reader_name are included when reader_capture is non-empty."""
+        msg = MagicMock()
+        msg.data.metadata.door = [MagicMock(id="door-001")]
+        msg.data.metadata.actor.display_name = "Raphael"
+        msg.data.metadata.authentication.display_name = "NFC"
+        msg.data.metadata.opened_method = [MagicMock(display_name="nfc")]
+        msg.data.metadata.opened_direction = [MagicMock(display_name="entry")]
+        msg.data.metadata.reader_capture = [
+            MagicMock(id="AA:BB:CC:DD:EE:FF", display_name="UA-G2-PRO-BB7A")
+        ]
+        msg.data.event_type = "access.door.unlock"
+        msg.data.result = "ACCESS"
+
+        events_received = []
+        hub.doors["door-001"].add_event_listener(
+            "access", lambda e, a: events_received.append(a)
+        )
+
+        await hub._handle_insights_add(msg)
+
+        assert len(events_received) == 1
+        assert events_received[0]["reader_id"] == "AA:BB:CC:DD:EE:FF"
+        assert events_received[0]["reader_name"] == "UA-G2-PRO-BB7A"
+
+    async def test_handle_insights_add_reader_capture_empty(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """reader_id and reader_name are omitted when reader_capture is empty."""
+        msg = MagicMock()
+        msg.data.metadata.door = [MagicMock(id="door-001")]
+        msg.data.metadata.actor.display_name = "Raphael"
+        msg.data.metadata.authentication.display_name = "NFC"
+        msg.data.metadata.opened_method = [MagicMock(display_name="nfc")]
+        msg.data.metadata.opened_direction = [MagicMock(display_name="entry")]
+        msg.data.metadata.reader_capture = []
+        msg.data.event_type = "access.door.unlock"
+        msg.data.result = "ACCESS"
+
+        events_received = []
+        hub.doors["door-001"].add_event_listener(
+            "access", lambda e, a: events_received.append(a)
+        )
+
+        await hub._handle_insights_add(msg)
+
+        assert len(events_received) == 1
+        assert "reader_id" not in events_received[0]
+        assert "reader_name" not in events_received[0]
 
     async def test_handle_insights_add_unknown_door(self, hub: UnifiAccessHub) -> None:
         """Ignore insights for unknown doors."""
@@ -371,6 +507,7 @@ class TestHubWebSocketHandlers:
         msg.data.metadata.authentication.display_name = "FACE"
         msg.data.metadata.opened_method = [MagicMock(display_name="face")]
         msg.data.metadata.opened_direction = [MagicMock(display_name="entry")]
+        msg.data.metadata.reader_capture = []
         msg.data.event_type = "access.door.unlock"
         msg.data.result = "ACCESS"
 
@@ -401,6 +538,7 @@ class TestHubWebSocketHandlers:
         insight_msg.data.metadata.authentication.display_name = "FACE"
         insight_msg.data.metadata.opened_method = [MagicMock(display_name="face")]
         insight_msg.data.metadata.opened_direction = [MagicMock(display_name="entry")]
+        insight_msg.data.metadata.reader_capture = []
         insight_msg.data.event_type = "access.door.unlock"
         insight_msg.data.result = "ACCESS"
 
@@ -677,6 +815,7 @@ class TestHubWebSocketHandlers:
         msg.data.metadata.authentication.display_name = "NFC"
         msg.data.metadata.opened_method = [MagicMock(display_name="nfc")]
         msg.data.metadata.opened_direction = [MagicMock(display_name="")]
+        msg.data.metadata.reader_capture = []
         msg.data.event_type = "access.door.unlock"
         msg.data.result = "ACCESS"
 
@@ -701,6 +840,7 @@ class TestHubWebSocketHandlers:
         msg.data.metadata.authentication.display_name = "NFC"
         msg.data.metadata.opened_method = [MagicMock(display_name="nfc")]
         msg.data.metadata.opened_direction = [MagicMock(display_name="denied")]
+        msg.data.metadata.reader_capture = []
         msg.data.event_type = "access.door.unlock"
         msg.data.result = "ACCESS"
 

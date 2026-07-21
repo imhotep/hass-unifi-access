@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `reader_id` and `reader_name` attributes on Door Event entities. When the controller reports which physical reader processed an access event, these fields expose the reader's MAC/device ID and display name (e.g. `UA-G2-PRO-BB7A`). Useful for automations that need to distinguish between multiple readers on the same door (e.g. inside vs. outside). Only present when the controller provides reader data; omitted otherwise.
+
 ## [3.0.13] - 2026-07-20
 
 ### Added
