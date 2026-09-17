@@ -28,9 +28,9 @@ CONF_DOUBLE_DRIVEWAY_ELIGIBLE_DOORS = "double_driveway_eligible_doors"
 # Access API reference 7.9: only UGT hubs accept entry_method=in/out
 # (double-driveway mode) or control_cmd=open/close/stop (three-button mode).
 # These are two independent query parameters on the same unlock endpoint,
-# not two values of the same one -- control_cmd=in/out looks plausible from
-# the reference table but silently fires only the entry relay either way;
-# confirmed against a live double-driveway UA Hub Gate.
+# not two values of the same one -- control_cmd=in/out is not a valid value
+# and silently fires only the entry relay either way; confirmed against a
+# live double-driveway UA Hub Gate.
 HUB_TYPE_UGT = "UGT"
 
 # Gate motor directions, valid only for UGT doors with double-driveway

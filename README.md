@@ -196,7 +196,7 @@ Open, close, and stop send the corresponding motor command (`control_cmd=open|cl
 
 ### Double-driveway mode (two independent gate motors on one UGT hub)
 
-Access firmware v4.2.16 added a second control scheme for UGT hubs wired to two gate motors (entry/exit) instead of one: `entry_method=in` / `entry_method=out` on the *same* door ID selects which motor fires, rather than exposing two separate doors. Note this is a distinct query parameter from `control_cmd` (which still only carries `open`/`close`/`stop` for three-button/single-gate mode) — `control_cmd=in`/`control_cmd=out` looks plausible reading the API reference but silently fires only the entry relay either way; confirmed against a live double-driveway hub.
+Access firmware v4.2.16 added a second control scheme for UGT hubs wired to two gate motors (entry/exit) instead of one: `entry_method=in` / `entry_method=out` on the *same* door ID selects which motor fires, rather than exposing two separate doors. This is a distinct query parameter from `control_cmd` (which still only carries `open`/`close`/`stop` for three-button/single-gate mode) — `control_cmd=in`/`control_cmd=out` is not a valid value and silently fires only the entry relay either way; confirmed against a live double-driveway hub.
 
 Access has no field reporting whether a given door is actually wired dual-relay — that's a physical wiring fact, not something the API exposes — and a single UGT hub can service *multiple* doors that share the same hub type but aren't all wired the same way (e.g. a dual-relay driveway gate and a single-relay pedestrian gate on the same hub). So this is a two-step opt-in rather than a switch shown on every UGT door:
 
