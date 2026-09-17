@@ -36,7 +36,11 @@ async def async_setup_entry(
         config_entry,
         data.coordinator,
         async_add_entities,
-        lambda door: door.hub_type == HUB_TYPE_UGT and door.double_driveway_mode,
+        lambda door: (
+            door.hub_type == HUB_TYPE_UGT
+            and door.double_driveway_eligible
+            and door.double_driveway_mode
+        ),
         lambda door_id: [
             OpenGateDirectionButton(data, door_id, direction=GATE_DIRECTION_IN),
             OpenGateDirectionButton(data, door_id, direction=GATE_DIRECTION_OUT),

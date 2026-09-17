@@ -83,10 +83,16 @@ class DoorState:
     open_time: int = 0
     close_time: int = 0
     obstruction_detected: bool = False
-    # User-declared (not API-visible) — Access has no field reporting whether
-    # a UGT hub actually has double-driveway mode enabled, so this has to be
-    # set manually to match the hub's own configuration. See DoubleDriveway-
-    # ModeSwitch in switch.py.
+    # Declared via the integration's options flow (see config_flow.py) — a
+    # UGT hub can service multiple doors that share the same hub device/type
+    # but are wired differently (e.g. a dual-relay driveway gate and a
+    # single-relay pedestrian gate on the same hub), and the API has no way
+    # to tell them apart. Gates whether DoubleDrivewayModeSwitch is created
+    # for this door at all.
+    double_driveway_eligible: bool = False
+    # User-declared runtime toggle (not API-visible) — only meaningful when
+    # double_driveway_eligible is also True. See DoubleDrivewayModeSwitch in
+    # switch.py.
     double_driveway_mode: bool = False
     doorbell_request_id: str | None = None
     thumbnail: bytes | None = None
@@ -414,8 +420,11 @@ class UnifiAccessHub:
 
         Only valid for a UA Hub Gate with double-driveway mode enabled
         (Access API reference 7.9): the door_id is shared by both gates,
-        and control_cmd=in/out selects which motor fires instead of the
-        single-gate open/close/stop commands.
+        and entry_method=in/out selects which motor fires — not
+        control_cmd, which only carries open/close/stop for three-button
+        mode. (Confirmed against a live double-driveway hub: control_cmd=out
+        silently fires the same relay as control_cmd=in/entry_method=in;
+        entry_method=out is what actually reaches the exit relay.)
         """
         if direction not in (GATE_DIRECTION_IN, GATE_DIRECTION_OUT):
             _LOGGER.warning(
@@ -426,7 +435,7 @@ class UnifiAccessHub:
                 GATE_DIRECTION_OUT,
             )
             return
-        await self.client.unlock_door(door_id, control_cmd=direction)
+        await self.client.unlock_door(door_id, entry_method=direction)
 
     async def async_set_face_unlock(self, door_id: str, *, enabled: bool) -> None:
         """Enable or disable face unlock on a device."""

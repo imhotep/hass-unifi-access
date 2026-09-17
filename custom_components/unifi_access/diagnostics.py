@@ -26,6 +26,7 @@ async def async_get_config_entry_diagnostics(
             "name": state.name,
             "hub_id": state.hub_id,
             "hub_type": state.hub_type,
+            "double_driveway_eligible": state.double_driveway_eligible,
             "double_driveway_mode": state.double_driveway_mode,
             "is_locked": state.is_locked,
             "is_open": state.is_open,

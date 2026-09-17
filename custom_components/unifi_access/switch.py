@@ -58,7 +58,7 @@ async def async_setup_entry(
         config_entry,
         data.coordinator,
         async_add_entities,
-        lambda door: door.hub_type == HUB_TYPE_UGT,
+        lambda door: door.hub_type == HUB_TYPE_UGT and door.double_driveway_eligible,
         lambda door_id: [DoubleDrivewayModeSwitch(data, door_id)],
     )
 
@@ -137,11 +137,13 @@ class FaceUnlockSwitch(UnifiAccessDoorEntity, SwitchEntity):
 
 
 class DoubleDrivewayModeSwitch(UnifiAccessDoorEntity, SwitchEntity):
-    """Declares whether a UGT hub has double-driveway mode enabled.
+    """Enable/disable double-driveway mode for an eligible door.
 
-    UniFi Access has no field reporting this back — it's a setting made
-    in the Access app itself — so it has to be declared here to match.
-    Enabling it exposes the entry/exit gate buttons for this door.
+    Only appears for doors declared eligible via the integration's options
+    flow (see config_flow.py) — UniFi Access has no field reporting whether
+    a door is actually wired dual-relay, so eligibility has to be declared
+    once at config time. Enabling this switch exposes the entry/exit gate
+    buttons for this door.
     """
 
     _attr_translation_key = "double_driveway_mode"

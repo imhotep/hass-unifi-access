@@ -18,6 +18,7 @@ from homeassistant.util import ssl as ssl_util
 from unifi_access_api import ApiConnectionError, EmergencyStatus, UnifiAccessApiClient
 
 from .const import (
+    CONF_DOUBLE_DRIVEWAY_ELIGIBLE_DOORS,
     DOMAIN,
     DOUBLE_DRIVEWAY_STORAGE_KEY,
     DOUBLE_DRIVEWAY_STORAGE_VERSION,
@@ -163,6 +164,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: UnifiAccessConfigEntry) 
         if door_id in stored_double_driveway:
             door_state.double_driveway_mode = stored_double_driveway[door_id]
 
+    # Apply the options-flow eligibility declaration (see config_flow.py —
+    # which specific UGT door(s) are actually wired dual-relay). A door that
+    # loses eligibility keeps its stored double_driveway_mode value but the
+    # switch/buttons won't be created for it, per DoorState's field docs.
+    eligible_door_ids = set(entry.options.get(CONF_DOUBLE_DRIVEWAY_ELIGIBLE_DOORS, []))
+    for door_id, door_state in coordinator.data.items():
+        door_state.double_driveway_eligible = door_id in eligible_door_ids
+
     emergency_coordinator: UnifiAccessCoordinator[EmergencyStatus] = (
         UnifiAccessCoordinator(
             hass,
@@ -197,7 +206,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: UnifiAccessConfigEntry) 
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
+    # Reload if the options flow changes the double-driveway eligibility list.
+    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
+
     return True
+
+
+async def _async_update_listener(
+    hass: HomeAssistant, entry: UnifiAccessConfigEntry
+) -> None:
+    """Reload the config entry when its options change."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(

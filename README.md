@@ -196,14 +196,17 @@ Open, close, and stop send the corresponding motor command (`control_cmd=open|cl
 
 ### Double-driveway mode (two independent gate motors on one UGT hub)
 
-Access firmware v4.2.16 added a second control scheme for UGT hubs wired to two gate motors (entry/exit) instead of one: `control_cmd=in` / `control_cmd=out` on the *same* door ID selects which motor fires, rather than exposing two separate doors.
+Access firmware v4.2.16 added a second control scheme for UGT hubs wired to two gate motors (entry/exit) instead of one: `entry_method=in` / `entry_method=out` on the *same* door ID selects which motor fires, rather than exposing two separate doors. Note this is a distinct query parameter from `control_cmd` (which still only carries `open`/`close`/`stop` for three-button/single-gate mode) — `control_cmd=in`/`control_cmd=out` looks plausible reading the API reference but silently fires only the entry relay either way; confirmed against a live double-driveway hub.
 
-Access has no field reporting whether a given UGT hub actually has double-driveway mode turned on — that's set in the Access app itself, not readable via the API — so every UGT door gets a **Double-Driveway Mode** (`switch`) config entity to declare it manually. Turn it on to match your hub's actual configuration.
+Access has no field reporting whether a given door is actually wired dual-relay — that's a physical wiring fact, not something the API exposes — and a single UGT hub can service *multiple* doors that share the same hub type but aren't all wired the same way (e.g. a dual-relay driveway gate and a single-relay pedestrian gate on the same hub). So this is a two-step opt-in rather than a switch shown on every UGT door:
+
+1. **Integration options (Settings → Devices & Services → UniFi Access → Configure)** — select which UGT door(s) are actually double-driveway. Only doors selected here get the next step's switch at all.
+2. **Double-Driveway Mode** (`switch`, per eligible door) — the runtime on/off toggle. Turn it on to match your hub's current Access-app configuration for that door.
 
 When enabled, the door gets two additional buttons:
 
-- **Open Gate (In)** — sends `control_cmd=in`
-- **Open Gate (Out)** — sends `control_cmd=out`
+- **Open Gate (In)** — sends `entry_method=in`
+- **Open Gate (Out)** — sends `entry_method=out`
 
 These are independent of the standard `open` / `close` / `stop` cover controls above, which remain available for single-gate (three-button mode) UGT hubs — double-driveway mode doesn't replace them, it adds the directional buttons alongside.
 
