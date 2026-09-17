@@ -17,7 +17,13 @@ from homeassistant.helpers.typing import ConfigType
 from homeassistant.util import ssl as ssl_util
 from unifi_access_api import ApiConnectionError, EmergencyStatus, UnifiAccessApiClient
 
-from .const import DOMAIN, STORAGE_KEY, STORAGE_VERSION
+from .const import (
+    DOMAIN,
+    DOUBLE_DRIVEWAY_STORAGE_KEY,
+    DOUBLE_DRIVEWAY_STORAGE_VERSION,
+    STORAGE_KEY,
+    STORAGE_VERSION,
+)
 from .coordinator import UnifiAccessCoordinator
 from .hub import DoorState, UnifiAccessHub
 
@@ -95,6 +101,7 @@ class UnifiAccessData:
     coordinator: UnifiAccessCoordinator[dict[str, DoorState]]
     emergency_coordinator: UnifiAccessCoordinator[EmergencyStatus]
     store: Store
+    double_driveway_store: Store
 
 
 type UnifiAccessConfigEntry = ConfigEntry[UnifiAccessData]
@@ -146,6 +153,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: UnifiAccessConfigEntry) 
         if door_id in stored_data:
             door_state.entity_type = stored_data[door_id]
 
+    # Restore persisted double-driveway mode (user-declared, UGT doors only —
+    # see DoorState.double_driveway_mode for why this can't come from the API)
+    double_driveway_store = Store(
+        hass, DOUBLE_DRIVEWAY_STORAGE_VERSION, DOUBLE_DRIVEWAY_STORAGE_KEY
+    )
+    stored_double_driveway: dict[str, bool] = await double_driveway_store.async_load() or {}
+    for door_id, door_state in coordinator.data.items():
+        if door_id in stored_double_driveway:
+            door_state.double_driveway_mode = stored_double_driveway[door_id]
+
     emergency_coordinator: UnifiAccessCoordinator[EmergencyStatus] = (
         UnifiAccessCoordinator(
             hass,
@@ -168,6 +185,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: UnifiAccessConfigEntry) 
         coordinator=coordinator,
         emergency_coordinator=emergency_coordinator,
         store=store,
+        double_driveway_store=double_driveway_store,
     )
 
     hub.create_task = lambda coro: entry.async_create_background_task(

@@ -51,6 +51,8 @@ from .const import (
     DOOR_TYPE_LOCK,
     DOORBELL_START_EVENT,
     DOORBELL_STOP_EVENT,
+    GATE_DIRECTION_IN,
+    GATE_DIRECTION_OUT,
     INTERCOM_HUB_TYPES,
 )
 
@@ -81,6 +83,11 @@ class DoorState:
     open_time: int = 0
     close_time: int = 0
     obstruction_detected: bool = False
+    # User-declared (not API-visible) — Access has no field reporting whether
+    # a UGT hub actually has double-driveway mode enabled, so this has to be
+    # set manually to match the hub's own configuration. See DoubleDriveway-
+    # ModeSwitch in switch.py.
+    double_driveway_mode: bool = False
     doorbell_request_id: str | None = None
     thumbnail: bytes | None = None
     thumbnail_last_updated: datetime | None = None
@@ -401,6 +408,25 @@ class UnifiAccessHub:
     async def async_stop_door(self, door_id: str) -> None:
         """Send stop command to a UGT gate/garage door."""
         await self.client.unlock_door(door_id, control_cmd="stop")
+
+    async def async_open_door_direction(self, door_id: str, direction: str) -> None:
+        """Trigger one gate motor on a double-driveway UGT hub.
+
+        Only valid for a UA Hub Gate with double-driveway mode enabled
+        (Access API reference 7.9): the door_id is shared by both gates,
+        and control_cmd=in/out selects which motor fires instead of the
+        single-gate open/close/stop commands.
+        """
+        if direction not in (GATE_DIRECTION_IN, GATE_DIRECTION_OUT):
+            _LOGGER.warning(
+                "Unsupported gate direction '%s' for door %s (expected '%s' or '%s')",
+                direction,
+                door_id,
+                GATE_DIRECTION_IN,
+                GATE_DIRECTION_OUT,
+            )
+            return
+        await self.client.unlock_door(door_id, control_cmd=direction)
 
     async def async_set_face_unlock(self, door_id: str, *, enabled: bool) -> None:
         """Enable or disable face unlock on a device."""

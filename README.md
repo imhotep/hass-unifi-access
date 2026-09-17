@@ -17,6 +17,7 @@
   - [Evacuation/Lockdown](#evacuationlockdown)
   - [Thumbnail](#thumbnail)
   - [UGT garage door / gate support](#ugt-garage-door--gate-support)
+    - [Double-driveway mode](#double-driveway-mode-two-independent-gate-motors-on-one-ugt-hub)
   - [Face Unlock](#face-unlock-ua-intercom-and-other-face-capable-readers)
   - [Door lock rules](#door-lock-rules-only-applies-to-uah)
 - [User Management Actions](#user-management-actions)
@@ -192,6 +193,19 @@ For `Garage Door` and `Gate` cover mode, the integration also adds:
 - `Clear Obstruction` (`button`)
 
 Open, close, and stop send the corresponding motor command (`control_cmd=open|close|stop`) directly to the UGT hub. The timeout helpers let Home Assistant infer whether the door is still opening or closing and expose an `obstruction_detected` attribute when the sensor state does not match the expected result.
+
+### Double-driveway mode (two independent gate motors on one UGT hub)
+
+Access firmware v4.2.16 added a second control scheme for UGT hubs wired to two gate motors (entry/exit) instead of one: `control_cmd=in` / `control_cmd=out` on the *same* door ID selects which motor fires, rather than exposing two separate doors.
+
+Access has no field reporting whether a given UGT hub actually has double-driveway mode turned on — that's set in the Access app itself, not readable via the API — so every UGT door gets a **Double-Driveway Mode** (`switch`) config entity to declare it manually. Turn it on to match your hub's actual configuration.
+
+When enabled, the door gets two additional buttons:
+
+- **Open Gate (In)** — sends `control_cmd=in`
+- **Open Gate (Out)** — sends `control_cmd=out`
+
+These are independent of the standard `open` / `close` / `stop` cover controls above, which remain available for single-gate (three-button mode) UGT hubs — double-driveway mode doesn't replace them, it adds the directional buttons alongside.
 
 ## Face Unlock (UA-Intercom and other face-capable readers)
 

@@ -114,6 +114,12 @@
     "button": {
       "clear_obstruction": {
         "name": "Clear Obstruction"
+      },
+      "open_gate_in": {
+        "name": "Open Gate (In)"
+      },
+      "open_gate_out": {
+        "name": "Open Gate (Out)"
       }
     },
     "cover": {
@@ -180,6 +186,9 @@
       },
       "lockdown": {
         "name": "Lockdown"
+      },
+      "double_driveway_mode": {
+        "name": "Double-Driveway Mode"
       }
     }
   }
