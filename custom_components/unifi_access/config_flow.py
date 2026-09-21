@@ -201,7 +201,9 @@ class UnifiAccessOptionsFlow(OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Let the installer declare double-driveway-eligible UGT doors."""
-        data = self.config_entry.runtime_data
+        data = getattr(self.config_entry, "runtime_data", None)
+        if data is None:
+            return self.async_abort(reason="integration_not_ready")
         ugt_doors = {
             door_id: door_state.name
             for door_id, door_state in data.coordinator.data.items()
