@@ -208,7 +208,7 @@ When enabled, the door gets two additional buttons:
 - **Open Gate (In)** — sends `entry_method=in`
 - **Open Gate (Out)** — sends `entry_method=out`
 
-These are independent of the standard `open` / `close` / `stop` cover controls above, which remain available for single-gate (three-button mode) UGT hubs — double-driveway mode doesn't replace them, it adds the directional buttons alongside.
+While double-driveway mode is enabled, the standard cover open/close/stop controls for that door are hidden: those actions use `control_cmd`, which is the wrong scheme for dual-relay hubs and only fires the entry relay. The In/Out buttons replace them. When double-driveway mode is off, the normal cover controls remain available for single-gate (three-button mode) UGT hubs.
 
 ## Face Unlock (UA-Intercom and other face-capable readers)
 

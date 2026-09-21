@@ -160,9 +160,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: UnifiAccessConfigEntry) 
         hass, DOUBLE_DRIVEWAY_STORAGE_VERSION, DOUBLE_DRIVEWAY_STORAGE_KEY
     )
     stored_double_driveway: dict[str, bool] = await double_driveway_store.async_load() or {}
-    for door_id, door_state in coordinator.data.items():
-        if door_id in stored_double_driveway:
-            door_state.double_driveway_mode = stored_double_driveway[door_id]
+    # Only apply keys that still exist (store is sparse: True-only).
+    for door_id, enabled in stored_double_driveway.items():
+        if enabled and door_id in coordinator.data:
+            coordinator.data[door_id].double_driveway_mode = True
 
     # Apply the options-flow eligibility declaration (see config_flow.py —
     # which specific UGT door(s) are actually wired dual-relay). A door that
