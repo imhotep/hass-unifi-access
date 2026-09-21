@@ -51,6 +51,8 @@ from .const import (
     DOOR_TYPE_LOCK,
     DOORBELL_START_EVENT,
     DOORBELL_STOP_EVENT,
+    GATE_DIRECTION_IN,
+    GATE_DIRECTION_OUT,
     INTERCOM_HUB_TYPES,
 )
 
@@ -81,6 +83,17 @@ class DoorState:
     open_time: int = 0
     close_time: int = 0
     obstruction_detected: bool = False
+    # Declared via the integration's options flow (see config_flow.py) — a
+    # UGT hub can service multiple doors that share the same hub device/type
+    # but are wired differently (e.g. a dual-relay driveway gate and a
+    # single-relay pedestrian gate on the same hub), and the API has no way
+    # to tell them apart. Gates whether DoubleDrivewayModeSwitch is created
+    # for this door at all.
+    double_driveway_eligible: bool = False
+    # User-declared runtime toggle (not API-visible) — only meaningful when
+    # double_driveway_eligible is also True. See DoubleDrivewayModeSwitch in
+    # switch.py.
+    double_driveway_mode: bool = False
     doorbell_request_id: str | None = None
     thumbnail: bytes | None = None
     thumbnail_last_updated: datetime | None = None
@@ -401,6 +414,28 @@ class UnifiAccessHub:
     async def async_stop_door(self, door_id: str) -> None:
         """Send stop command to a UGT gate/garage door."""
         await self.client.unlock_door(door_id, control_cmd="stop")
+
+    async def async_open_door_direction(self, door_id: str, direction: str) -> None:
+        """Trigger one gate motor on a double-driveway UGT hub.
+
+        Only valid for a UA Hub Gate with double-driveway mode enabled
+        (Access API reference 7.9): the door_id is shared by both gates,
+        and entry_method=in/out selects which motor fires — not
+        control_cmd, which only carries open/close/stop for three-button
+        mode. (Confirmed against a live double-driveway hub: control_cmd=out
+        silently fires the same relay as control_cmd=in/entry_method=in;
+        entry_method=out is what actually reaches the exit relay.)
+        """
+        if direction not in (GATE_DIRECTION_IN, GATE_DIRECTION_OUT):
+            _LOGGER.warning(
+                "Unsupported gate direction '%s' for door %s (expected '%s' or '%s')",
+                direction,
+                door_id,
+                GATE_DIRECTION_IN,
+                GATE_DIRECTION_OUT,
+            )
+            return
+        await self.client.unlock_door(door_id, entry_method=direction)
 
     async def async_set_face_unlock(self, door_id: str, *, enabled: bool) -> None:
         """Enable or disable face unlock on a device."""

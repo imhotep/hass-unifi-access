@@ -13,6 +13,7 @@ from unifi_access_api import (
     DoorPositionStatus,
 )
 
+from custom_components.unifi_access.const import GATE_DIRECTION_IN, GATE_DIRECTION_OUT
 from custom_components.unifi_access.hub import (
     DoorState,
     UnifiAccessHub,
@@ -174,6 +175,49 @@ class TestHubUpdate:
         rule = mock_api_client.set_door_lock_rule.call_args[0][1]
         assert rule.type == DoorLockRuleType.KEEP_LOCK
         assert rule.interval == 30
+
+
+# ---------------------------------------------------------------------------
+# UnifiAccessHub — directional gate control
+# ---------------------------------------------------------------------------
+
+
+class TestHubDirectionalGateControl:
+    """Tests for double-driveway directional gate control."""
+
+    @pytest.fixture
+    def hub(self, mock_api_client: AsyncMock) -> UnifiAccessHub:
+        return UnifiAccessHub(mock_api_client)
+
+    async def test_async_open_door_direction_in(
+        self, hub: UnifiAccessHub, mock_api_client: AsyncMock
+    ) -> None:
+        """IN direction should use entry_method and not control_cmd."""
+        await hub.async_open_door_direction("door-001", GATE_DIRECTION_IN)
+
+        mock_api_client.unlock_door.assert_called_once_with(
+            "door-001", entry_method=GATE_DIRECTION_IN
+        )
+        assert "control_cmd" not in mock_api_client.unlock_door.call_args.kwargs
+
+    async def test_async_open_door_direction_out(
+        self, hub: UnifiAccessHub, mock_api_client: AsyncMock
+    ) -> None:
+        """OUT direction should use entry_method and not control_cmd."""
+        await hub.async_open_door_direction("door-001", GATE_DIRECTION_OUT)
+
+        mock_api_client.unlock_door.assert_called_once_with(
+            "door-001", entry_method=GATE_DIRECTION_OUT
+        )
+        assert "control_cmd" not in mock_api_client.unlock_door.call_args.kwargs
+
+    async def test_async_open_door_direction_invalid(
+        self, hub: UnifiAccessHub, mock_api_client: AsyncMock
+    ) -> None:
+        """Invalid directions should not call unlock_door."""
+        await hub.async_open_door_direction("door-001", "sideways")
+
+        mock_api_client.unlock_door.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
