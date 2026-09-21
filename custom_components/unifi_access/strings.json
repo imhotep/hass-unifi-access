@@ -83,7 +83,8 @@
       }
     },
     "abort": {
-      "no_ugt_doors": "No UA Hub Gate (UGT) doors were found on this UniFi Access controller."
+      "no_ugt_doors": "No UA Hub Gate (UGT) doors were found on this UniFi Access controller.",
+      "integration_not_ready": "UniFi Access is still starting up. Open Configure again once the integration has finished loading."
     }
   },
   "entity": {
