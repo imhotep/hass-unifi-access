@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import UnifiAccessConfigEntry, UnifiAccessData
-from .const import DOOR_TYPES
+from .const import DOOR_TYPES, HUB_TYPE_UGT
 from .entity import UnifiAccessDoorEntity
 
 PARALLEL_UPDATES = 1
@@ -39,7 +39,7 @@ async def async_setup_entry(
     def _check_for_new_ugt_doors() -> None:
         new_entities = []
         for door_id, door in data.coordinator.data.items():
-            if door.hub_type == "UGT" and door_id not in known_ugt_doors:
+            if door.hub_type == HUB_TYPE_UGT and door_id not in known_ugt_doors:
                 known_ugt_doors.add(door_id)
                 _LOGGER.debug(
                     "Discovered UGT door %s (%s), adding EntityTypeSelect",
