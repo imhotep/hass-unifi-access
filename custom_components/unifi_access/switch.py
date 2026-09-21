@@ -167,9 +167,11 @@ class DoubleDrivewayModeSwitch(UnifiAccessDoorEntity, SwitchEntity):
             return
         self.door.double_driveway_mode = enabled
 
-        stored: dict[str, bool] = {}
-        for door_id, door_state in self._data.coordinator.data.items():
-            stored[door_id] = door_state.double_driveway_mode
+        stored = {
+            door_id: True
+            for door_id, door_state in self._data.coordinator.data.items()
+            if door_state.double_driveway_mode
+        }
         await self._data.double_driveway_store.async_save(stored)
 
         _LOGGER.debug(
