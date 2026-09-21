@@ -17,6 +17,7 @@
   - [Evacuation/Lockdown](#evacuationlockdown)
   - [Thumbnail](#thumbnail)
   - [UGT garage door / gate support](#ugt-garage-door--gate-support)
+    - [Double-driveway mode](#double-driveway-mode-two-independent-gate-motors-on-one-ugt-hub)
   - [Face Unlock](#face-unlock-ua-intercom-and-other-face-capable-readers)
   - [Door lock rules](#door-lock-rules-only-applies-to-uah)
 - [User Management Actions](#user-management-actions)
@@ -192,6 +193,22 @@ For `Garage Door` and `Gate` cover mode, the integration also adds:
 - `Clear Obstruction` (`button`)
 
 Open, close, and stop send the corresponding motor command (`control_cmd=open|close|stop`) directly to the UGT hub. The timeout helpers let Home Assistant infer whether the door is still opening or closing and expose an `obstruction_detected` attribute when the sensor state does not match the expected result.
+
+### Double-driveway mode (two independent gate motors on one UGT hub)
+
+Access firmware v4.2.16 added a second control scheme for UGT hubs wired to two gate motors (entry/exit) instead of one: `entry_method=in` / `entry_method=out` on the *same* door ID selects which motor fires, rather than exposing two separate doors. This is a distinct query parameter from `control_cmd` (which still only carries `open`/`close`/`stop` for three-button/single-gate mode) — `control_cmd=in`/`control_cmd=out` is not a valid value and silently fires only the entry relay either way; confirmed against a live double-driveway hub.
+
+Access has no field reporting whether a given door is actually wired dual-relay — that's a physical wiring fact, not something the API exposes — and a single UGT hub can service *multiple* doors that share the same hub type but aren't all wired the same way (e.g. a dual-relay driveway gate and a single-relay pedestrian gate on the same hub). So this is a two-step opt-in rather than a switch shown on every UGT door:
+
+1. **Integration options (Settings → Devices & Services → UniFi Access → Configure)** — select which UGT door(s) are actually double-driveway. Only doors selected here get the next step's switch at all.
+2. **Double-Driveway Mode** (`switch`, per eligible door) — the runtime on/off toggle. Turn it on to match your hub's current Access-app configuration for that door.
+
+When enabled, the door gets two additional buttons:
+
+- **Open Gate (In)** — sends `entry_method=in`
+- **Open Gate (Out)** — sends `entry_method=out`
+
+While double-driveway mode is enabled, the standard cover open/close/stop controls for that door are hidden: those actions use `control_cmd`, which is the wrong scheme for dual-relay hubs and only fires the entry relay. The In/Out buttons replace them. When double-driveway mode is off, the normal cover controls remain available for single-gate (three-button mode) UGT hubs.
 
 ## Face Unlock (UA-Intercom and other face-capable readers)
 
