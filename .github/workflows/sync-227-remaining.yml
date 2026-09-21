@@ -1,4 +1,4 @@
-name: Sync remaining #227 files onto review-nits branch
+name: Sync remaining 227 files
 
 on:
   workflow_dispatch:
@@ -14,128 +14,12 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout fix branch
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: fix/double-driveway-review-nits
-          fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Fetch PR #227 head from fork and copy remaining files
+      - name: Run sync script
         run: |
-          set -euo pipefail
-          PR227_SHA=e73e8541cb73d407e26cac3f268f5e4a321ebb59
-          git remote add fork https://github.com/BadgerBadgerAndFox/hass-unifi-access.git || true
-          git fetch fork "$PR227_SHA"
-          git checkout "$PR227_SHA" -- \
-            custom_components/unifi_access/hub.py \
-            README.md \
-            tests/test_hub.py
-
-          python3 <<'PY'
-          from pathlib import Path
-
-          readme = Path("README.md")
-          text = readme.read_text()
-          old = (
-              "These are independent of the standard `open` / `close` / `stop` cover "
-              "controls above, which remain available for single-gate (three-button mode) "
-              "UGT hubs — double-driveway mode doesn't replace them, it adds the directional "
-              "buttons alongside."
-          )
-          new = (
-              "While double-driveway mode is enabled, the standard cover open/close/stop "
-              "controls for that door are hidden: those actions use `control_cmd`, which is "
-              "the wrong scheme for dual-relay hubs and only fires the entry relay. The In/Out "
-              "buttons replace them. When double-driveway mode is off, the normal cover "
-              "controls remain available for single-gate (three-button mode) UGT hubs."
-          )
-          if old in text:
-              readme.write_text(text.replace(old, new, 1))
-              print("README: applied cover-hidden wording")
-          elif "are hidden" in text and "control_cmd" in text:
-              print("README: cover-hidden wording already present")
-          else:
-              needle = "Open Gate (Out)** — sends `entry_method=out`"
-              if needle not in text:
-                  raise SystemExit("README: could not find double-driveway Out button line")
-              start = text.index(needle) + len(needle)
-              while start < len(text) and text[start] in "\r\n":
-                  start += 1
-              end = text.index("\n\n", start)
-              text = text[:start] + new + text[end:]
-              readme.write_text(text)
-              print("README: applied cover-hidden wording via fallback")
-
-          tests_path = Path("tests/test_hub.py")
-          tests = tests_path.read_text()
-          if "async_open_door_direction" in tests:
-              print("tests: direction tests already present")
-          else:
-              if "GATE_DIRECTION_IN" not in tests:
-                  tests = tests.replace(
-                      "from custom_components.unifi_access.hub import (",
-                      "from custom_components.unifi_access.const import (\n"
-                      "    GATE_DIRECTION_IN,\n"
-                      "    GATE_DIRECTION_OUT,\n"
-                      ")\n"
-                      "from custom_components.unifi_access.hub import (",
-                      1,
-                  )
-              addition = """
-
-# ---------------------------------------------------------------------------
-# UnifiAccessHub — double-driveway door direction
-# ---------------------------------------------------------------------------
-
-
-class TestHubDoorDirection:
-    \"\"\"Tests for async_open_door_direction (double-driveway entry_method).\"\"\"
-
-    @pytest.fixture
-    def hub(self, mock_api_client: AsyncMock) -> UnifiAccessHub:
-        return UnifiAccessHub(mock_api_client)
-
-    async def test_async_open_door_direction_in(
-        self, hub: UnifiAccessHub, mock_api_client: AsyncMock
-    ) -> None:
-        \"\"\"in direction uses entry_method, not control_cmd.\"\"\"
-        await hub.async_open_door_direction(\"door-001\", GATE_DIRECTION_IN)
-        mock_api_client.unlock_door.assert_called_once_with(
-            \"door-001\", entry_method=GATE_DIRECTION_IN
-        )
-        assert \"control_cmd\" not in mock_api_client.unlock_door.call_args.kwargs
-
-    async def test_async_open_door_direction_out(
-        self, hub: UnifiAccessHub, mock_api_client: AsyncMock
-    ) -> None:
-        \"\"\"out direction uses entry_method, not control_cmd.\"\"\"
-        await hub.async_open_door_direction(\"door-001\", GATE_DIRECTION_OUT)
-        mock_api_client.unlock_door.assert_called_once_with(
-            \"door-001\", entry_method=GATE_DIRECTION_OUT
-        )
-        assert \"control_cmd\" not in mock_api_client.unlock_door.call_args.kwargs
-
-    async def test_async_open_door_direction_invalid(
-        self, hub: UnifiAccessHub, mock_api_client: AsyncMock
-    ) -> None:
-        \"\"\"Invalid direction does not call unlock_door.\"\"\"
-        await hub.async_open_door_direction(\"door-001\", \"sideways\")
-        mock_api_client.unlock_door.assert_not_called()
-"""
-              tests_path.write_text(tests.rstrip() + addition + "\n")
-              print("tests: appended TestHubDoorDirection")
-          PY
-
-      - name: Commit and push if changed
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add custom_components/unifi_access/hub.py README.md tests/test_hub.py
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-            exit 0
-          fi
-          git commit -m "feat: sync hub/README/tests from #227 with review nits"
-          git push origin HEAD:fix/double-driveway-review-nits
+          echo 'IyEvYmluL2Jhc2gKc2V0IC1ldW8gcGlwZWZhaWwKU0hBPWU3M2U4NTQxY2I3M2Q0MDdlMjZjYWMzZjI2OGY1ZTRhMzIxZWJiNTkKQkFTRT0iaHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL0JhZGdlckJhZGdlckFuZEZveC9oYXNzLXVuaWZpLWFjY2Vzcy8ke1NIQX0iCmN1cmwgLWZzU0wgIiRCQVNFL2N1c3RvbV9jb21wb25lbnRzL3VuaWZpX2FjY2Vzcy9odWIucHkiIC1vIGN1c3RvbV9jb21wb25lbnRzL3VuaWZpX2FjY2Vzcy9odWIucHkKY3VybCAtZnNTTCAiJEJBU0UvUkVBRE1FLm1kIiAtbyBSRUFETUUubWQKY3VybCAtZnNTTCAiJEJBU0UvdGVzdHMvdGVzdF9odWIucHkiIC1vIHRlc3RzL3Rlc3RfaHViLnB5CnB5dGhvbjMgLSA8PCdQWScKCmZyb20gcGF0aGxpYiBpbXBvcnQgUGF0aAppbXBvcnQgcmUKcCA9IFBhdGgoIlJFQURNRS5tZCIpCnQgPSBwLnJlYWRfdGV4dCgpCnBhdCA9IHIiVGhlc2UgYXJlIGluZGVwZW5kZW50IG9mIHRoZSBzdGFuZGFyZCBgb3BlbmAgLyBgY2xvc2VgIC8gYHN0b3BgIGNvdmVyIGNvbnRyb2xzIGFib3ZlLCB3aGljaCByZW1haW4gYXZhaWxhYmxlIGZvciBzaW5nbGUtZ2F0ZSBcKHRocmVlLWJ1dHRvbiBtb2RlXCkgVUdUIGh1YnMg4oCUIGRvdWJsZS1kcml2ZXdheSBtb2RlIGRvZXNuJ3QgcmVwbGFjZSB0aGVtLCBpdCBhZGRzIHRoZSBkaXJlY3Rpb25hbCBidXR0b25zIGFsb25nc2lkZVwuIgpyZXBsID0gKAogICAgIldoaWxlIGRvdWJsZS1kcml2ZXdheSBtb2RlIGlzIGVuYWJsZWQsIHRoZSBzdGFuZGFyZCBjb3ZlciBvcGVuL2Nsb3NlL3N0b3AgY29udHJvbHMgIgogICAgImZvciB0aGF0IGRvb3IgYXJlIGhpZGRlbjogdGhvc2UgYWN0aW9ucyB1c2UgYGNvbnRyb2xfY21kYCwgd2hpY2ggaXMgdGhlIHdyb25nIHNjaGVtZSAiCiAgICAiZm9yIGR1YWwtcmVsYXkgaHVicyBhbmQgb25seSBmaXJlcyB0aGUgZW50cnkgcmVsYXkuIFRoZSBJbi9PdXQgYnV0dG9ucyByZXBsYWNlIHRoZW0uICIKICAgICJXaGVuIGRvdWJsZS1kcml2ZXdheSBtb2RlIGlzIG9mZiwgdGhlIG5vcm1hbCBjb3ZlciBjb250cm9scyByZW1haW4gYXZhaWxhYmxlIGZvciAiCiAgICAic2luZ2xlLWdhdGUgKHRocmVlLWJ1dHRvbiBtb2RlKSBVR1QgaHVicy4iCikKdDIsIG4gPSByZS5zdWJuKHBhdCwgcmVwbCwgdCwgY291bnQ9MSkKaWYgbiAhPSAxOgogICAgcmFpc2UgU3lzdGVtRXhpdChmIlJFQURNRSByZXBsYWNlIGZhaWxlZCBuPXtufSIpCnAud3JpdGVfdGV4dCh0MikKcHJpbnQoIlJFQURNRSBwYXRjaGVkIikKdHAgPSBQYXRoKCJ0ZXN0cy90ZXN0X2h1Yi5weSIpCnR0ID0gdHAucmVhZF90ZXh0KCkKaWYgImFzeW5jX29wZW5fZG9vcl9kaXJlY3Rpb24iIGluIHR0OgogICAgcHJpbnQoInRlc3RzIG9rIikKZWxzZToKICAgIGlmICJHQVRFX0RJUkVDVElPTl9JTiIgbm90IGluIHR0OgogICAgICAgIHR0ID0gdHQucmVwbGFjZSgKICAgICAgICAgICAgImZyb20gY3VzdG9tX2NvbXBvbmVudHMudW5pZmlfYWNjZXNzLmh1YiBpbXBvcnQgKCIsCiAgICAgICAgICAgICJmcm9tIGN1c3RvbV9jb21wb25lbnRzLnVuaWZpX2FjY2Vzcy5jb25zdCBpbXBvcnQgKFxuICAgIEdBVEVfRElSRUNUSU9OX0lOLFxuICAgIEdBVEVfRElSRUNUSU9OX09VVCxcbilcbmZyb20gY3VzdG9tX2NvbXBvbmVudHMudW5pZmlfYWNjZXNzLmh1YiBpbXBvcnQgKCIsCiAgICAgICAgICAgIDEsCiAgICAgICAgKQogICAgdHQgPSB0dC5yc3RyaXAoKSArICJcblxuY2xhc3MgVGVzdEh1YkRvb3JEaXJlY3Rpb246XG4gICAgXCJcIlwiVGVzdHMgZm9yIGFzeW5jX29wZW5fZG9vcl9kaXJlY3Rpb24gKGRvdWJsZS1kcml2ZXdheSBlbnRyeV9tZXRob2QpLlwiXCJcIlxuXG4gICAgQHB5dGVzdC5maXh0dXJlXG4gICAgZGVmIGh1YihzZWxmLCBtb2NrX2FwaV9jbGllbnQ6IEFzeW5jTW9jaykgLT4gVW5pZmlBY2Nlc3NIdWI6XG4gICAgICAgIHJldHVybiBVbmlmaUFjY2Vzc0h1Yihtb2NrX2FwaV9jbGllbnQpXG5cbiAgICBhc3luYyBkZWYgdGVzdF9hc3luY19vcGVuX2Rvb3JfZGlyZWN0aW9uX2luKFxuICAgICAgICBzZWxmLCBodWI6IFVuaWZpQWNjZXNzSHViLCBtb2NrX2FwaV9jbGllbnQ6IEFzeW5jTW9ja1xuICAgICkgLT4gTm9uZTpcbiAgICAgICAgXCJcIlwiaW4gZGlyZWN0aW9uIHVzZXMgZW50cnlfbWV0aG9kLCBub3QgY29udHJvbF9jbWQuXCJcIlwiXG4gICAgICAgIGF3YWl0IGh1Yi5hc3luY19vcGVuX2Rvb3JfZGlyZWN0aW9uKFwiZG9vci0wMDFcIiwgR0FURV9ESVJFQ1RJT05fSU4pXG4gICAgICAgIG1vY2tfYXBpX2NsaWVudC51bmxvY2tfZG9vci5hc3NlcnRfY2FsbGVkX29uY2Vfd2l0aChcbiAgICAgICAgICAgIFwiZG9vci0wMDFcIiwgZW50cnlfbWV0aG9kPUdBVEVfRElSRUNUSU9OX0lOXG4gICAgICAgIClcbiAgICAgICAgYXNzZXJ0IFwiY29udHJvbF9jbWRcIiBub3QgaW4gbW9ja19hcGlfY2xpZW50LnVubG9ja19kb29yLmNhbGxfYXJncy5rd2FyZ3NcblxuICAgIGFzeW5jIGRlZiB0ZXN0X2FzeW5jX29wZW5fZG9vcl9kaXJlY3Rpb25fb3V0KFxuICAgICAgICBzZWxmLCBodWI6IFVuaWZpQWNjZXNzSHViLCBtb2NrX2FwaV9jbGllbnQ6IEFzeW5jTW9ja1xuICAgICkgLT4gTm9uZTpcbiAgICAgICAgXCJcIlwib3V0IGRpcmVjdGlvbiB1c2VzIGVudHJ5X21ldGhvZCwgbm90IGNvbnRyb2xfY21kLlwiXCJcIlxuICAgICAgICBhd2FpdCBodWIuYXN5bmNfb3Blbl9kb29yX2RpcmVjdGlvbihcImRvb3ItMDAxXCIsIEdBVEVfRElSRUNUSU9OX09VVClcbiAgICAgICAgbW9ja19hcGlfY2xpZW50LnVubG9ja19kb29yLmFzc2VydF9jYWxsZWRfb25jZV93aXRoKFxuICAgICAgICAgICAgXCJkb29yLTAwMVwiLCBlbnRyeV9tZXRob2Q9R0FURV9ESVJFQ1RJT05fT1VUXG4gICAgICAgIClcbiAgICAgICAgYXNzZXJ0IFwiY29udHJvbF9jbWRcIiBub3QgaW4gbW9ja19hcGlfY2xpZW50LnVubG9ja19kb29yLmNhbGxfYXJncy5rd2FyZ3NcblxuICAgIGFzeW5jIGRlZiB0ZXN0X2FzeW5jX29wZW5fZG9vcl9kaXJlY3Rpb25faW52YWxpZChcbiAgICAgICAgc2VsZiwgaHViOiBVbmlmaUFjY2Vzc0h1YiwgbW9ja19hcGlfY2xpZW50OiBBc3luY01vY2tcbiAgICApIC0+IE5vbmU6XG4gICAgICAgIFwiXCJcIkludmFsaWQgZGlyZWN0aW9uIGRvZXMgbm90IGNhbGwgdW5sb2NrX2Rvb3IuXCJcIlwiXG4gICAgICAgIGF3YWl0IGh1Yi5hc3luY19vcGVuX2Rvb3JfZGlyZWN0aW9uKFwiZG9vci0wMDFcIiwgXCJzaWRld2F5c1wiKVxuICAgICAgICBtb2NrX2FwaV9jbGllbnQudW5sb2NrX2Rvb3IuYXNzZXJ0X25vdF9jYWxsZWQoKVxuIgogICAgdHAud3JpdGVfdGV4dCh0dCArICJcbiIpCiAgICBwcmludCgidGVzdHMgYXBwZW5kZWQiKQoKUFkKZ2l0IGNvbmZpZyB1c2VyLm5hbWUgImdpdGh1Yi1hY3Rpb25zW2JvdF0iCmdpdCBjb25maWcgdXNlci5lbWFpbCAiNDE4OTgyODIrZ2l0aHViLWFjdGlvbnNbYm90XUB1c2Vycy5ub3JlcGx5LmdpdGh1Yi5jb20iCmdpdCBhZGQgY3VzdG9tX2NvbXBvbmVudHMvdW5pZmlfYWNjZXNzL2h1Yi5weSBSRUFETUUubWQgdGVzdHMvdGVzdF9odWIucHkKaWYgZ2l0IGRpZmYgLS1jYWNoZWQgLS1xdWlldDsgdGhlbiBlY2hvIE5vIGNoYW5nZXM7IGV4aXQgMDsgZmkKZ2l0IGNvbW1pdCAtbSAiZmVhdDogc3luYyBodWIvUkVBRE1FL3Rlc3RzIGZyb20gIzIyNyB3aXRoIHJldmlldyBuaXRzIgpnaXQgcHVzaCBvcmlnaW4gSEVBRDpmaXgvZG91YmxlLWRyaXZld2F5LXJldmlldy1uaXRzCg==' | base64 -d > /tmp/sync227.sh
+          chmod +x /tmp/sync227.sh
+          bash /tmp/sync227.sh
