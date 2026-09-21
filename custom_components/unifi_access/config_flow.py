@@ -6,9 +6,15 @@ from collections.abc import Mapping
 import logging
 from typing import Any
 
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
-from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlow,
+)
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.util import ssl as ssl_util
 from unifi_access_api import (
@@ -19,7 +25,7 @@ from unifi_access_api import (
 )
 import voluptuous as vol
 
-from .const import DOMAIN
+from .const import CONF_DOUBLE_DRIVEWAY_ELIGIBLE_DOORS, DOMAIN, HUB_TYPE_UGT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -174,6 +180,55 @@ class UnifiAccessConfigFlow(ConfigFlow, domain=DOMAIN):
                 }
             ),
             errors=errors,
+        )
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
+        """Get the options flow for this handler."""
+        return UnifiAccessOptionsFlow()
+
+
+class UnifiAccessOptionsFlow(OptionsFlow):
+    """Options flow for Unifi Access.
+
+    Currently used only to declare which UGT door(s) are actually wired
+    dual-relay (double-driveway) — see CONF_DOUBLE_DRIVEWAY_ELIGIBLE_DOORS
+    in const.py for why this can't be detected from the API.
+    """
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Let the installer declare double-driveway-eligible UGT doors."""
+        data = getattr(self.config_entry, "runtime_data", None)
+        if data is None:
+            return self.async_abort(reason="integration_not_ready")
+
+        ugt_doors = {
+            door_id: door_state.name
+            for door_id, door_state in data.coordinator.data.items()
+            if door_state.hub_type == HUB_TYPE_UGT
+        }
+
+        if not ugt_doors:
+            return self.async_abort(reason="no_ugt_doors")
+
+        if user_input is not None:
+            return self.async_create_entry(data=user_input)
+
+        current = self.config_entry.options.get(
+            CONF_DOUBLE_DRIVEWAY_ELIGIBLE_DOORS, []
+        )
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(
+                        CONF_DOUBLE_DRIVEWAY_ELIGIBLE_DOORS, default=current
+                    ): cv.multi_select(ugt_doors)
+                }
+            ),
         )
 
 
