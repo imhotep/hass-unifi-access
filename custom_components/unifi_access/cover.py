@@ -37,7 +37,10 @@ async def async_setup_entry(
         config_entry,
         data.coordinator,
         async_add_entities,
-        lambda door: door.entity_type in (DOOR_TYPE_GARAGE, DOOR_TYPE_GATE),
+        lambda door: (
+            door.entity_type in (DOOR_TYPE_GARAGE, DOOR_TYPE_GATE)
+            and not door.double_driveway_mode
+        ),
         lambda door_id: [UnifiAccessCoverEntity(data, door_id)],
     )
 
