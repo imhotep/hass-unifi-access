@@ -49,6 +49,22 @@
             }
         }
     },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "double_driveway_eligible_doors": "Double-driveway (dual-relay) doors"
+                },
+                "data_description": {
+                    "double_driveway_eligible_doors": "Select any UA Hub Gate doors that are actually wired to drive two independent gate motors. A UGT hub can service other doors (e.g. a pedestrian gate) that share its hub type but aren't wired this way — only doors selected here will get the Double-Driveway Mode switch."
+                }
+            }
+        },
+        "abort": {
+            "no_ugt_doors": "No UA Hub Gate (UGT) doors were found on this UniFi Access controller.",
+            "integration_not_ready": "UniFi Access is still starting up. Open Configure again once the integration has finished loading."
+        }
+    },
     "entity": {
         "binary_sensor": {
             "access_door_dps": {
@@ -97,6 +113,12 @@
         "button": {
             "clear_obstruction": {
                 "name": "Clear Obstruction"
+            },
+            "open_gate_in": {
+                "name": "Open Gate (In)"
+            },
+            "open_gate_out": {
+                "name": "Open Gate (Out)"
             }
         },
         "cover": {
@@ -155,6 +177,9 @@
             },
             "lockdown": {
                 "name": "Lockdown"
+            },
+            "double_driveway_mode": {
+                "name": "Double-Driveway Mode"
             }
         }
     }
