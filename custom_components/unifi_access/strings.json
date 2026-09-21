@@ -178,7 +178,7 @@
           "garage": "Garage Door",
           "gate": "Gate"
         }
-      },
+      }
     },
     "sensor": {
       "door_lock_rule": {
