@@ -1,0 +1,132 @@
+name: Sync remaining #227 files onto review-nits branch
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/double-driveway-review-nits]
+    paths:
+      - .github/workflows/sync-227-remaining.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fix branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/double-driveway-review-nits
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fetch PR #227 head and copy remaining files
+        run: |
+          set -euo pipefail
+          PR227_SHA=e73e8541cb73d407e26cac3f268f5e4a321ebb59
+          git fetch origin "$PR227_SHA"
+          git checkout "$PR227_SHA" -- \
+            custom_components/unifi_access/hub.py \
+            README.md \
+            tests/test_hub.py
+
+          # Review nit: hide cover open/close/stop while double-driveway mode is on
+          python3 <<'PY'
+          from pathlib import Path
+          path = Path("README.md")
+          text = path.read_text()
+          old = (
+              "These are independent of the standard `open` / `close` / `stop` cover "
+              "controls above, which remain available for single-gate (three-button mode) "
+              "UGT hubs — double-driveway mode doesn't replace them, it adds the directional "
+              "buttons alongside."
+          )
+          new = (
+              "While double-driveway mode is enabled, the standard cover open/close/stop "
+              "controls for that door are hidden: those actions use `control_cmd`, which is "
+              "the wrong scheme for dual-relay hubs and only fires the entry relay. The In/Out "
+              "buttons replace them. When double-driveway mode is off, the normal cover "
+              "controls remain available for single-gate (three-button mode) UGT hubs."
+          )
+          if old in text:
+              path.write_text(text.replace(old, new, 1))
+              print("README: applied cover-hidden wording")
+          elif "are hidden" in text and "control_cmd" in text:
+              print("README: cover-hidden wording already present")
+          else:
+              raise SystemExit("README: expected double-driveway paragraph not found")
+          PY
+
+          # Review nit: tests for async_open_door_direction / entry_method
+          python3 <<'PY'
+          from pathlib import Path
+          path = Path("tests/test_hub.py")
+          text = path.read_text()
+          marker = "async_open_door_direction"
+          if marker in text:
+              print("tests: direction tests already present")
+          else:
+              # Append tests matching existing style in this file
+              addition = '''
+
+# ---------------------------------------------------------------------------
+# UnifiAccessHub — double-driveway door direction
+# ---------------------------------------------------------------------------
+
+
+class TestHubDoorDirection:
+    """Tests for async_open_door_direction (double-driveway entry_method)."""
+
+    @pytest.fixture
+    def hub(self, mock_api_client: AsyncMock) -> UnifiAccessHub:
+        return UnifiAccessHub(mock_api_client)
+
+    async def test_async_open_door_direction_in(
+        self, hub: UnifiAccessHub, mock_api_client: AsyncMock
+    ) -> None:
+        """in direction uses entry_method, not control_cmd."""
+        from custom_components.unifi_access.const import GATE_DIRECTION_IN
+
+        await hub.async_open_door_direction("door-001", GATE_DIRECTION_IN)
+        mock_api_client.unlock_door.assert_awaited_once_with(
+            "door-001", entry_method=GATE_DIRECTION_IN
+        )
+        assert "control_cmd" not in mock_api_client.unlock_door.call_args.kwargs
+
+    async def test_async_open_door_direction_out(
+        self, hub: UnifiAccessHub, mock_api_client: AsyncMock
+    ) -> None:
+        """out direction uses entry_method, not control_cmd."""
+        from custom_components.unifi_access.const import GATE_DIRECTION_OUT
+
+        await hub.async_open_door_direction("door-001", GATE_DIRECTION_OUT)
+        mock_api_client.unlock_door.assert_awaited_once_with(
+            "door-001", entry_method=GATE_DIRECTION_OUT
+        )
+        assert "control_cmd" not in mock_api_client.unlock_door.call_args.kwargs
+
+    async def test_async_open_door_direction_invalid(
+        self, hub: UnifiAccessHub, mock_api_client: AsyncMock
+    ) -> None:
+        """Invalid direction does not call unlock_door."""
+        await hub.async_open_door_direction("door-001", "sideways")
+        mock_api_client.unlock_door.assert_not_awaited()
+'''
+              # Ensure pytest/AsyncMock/UnifiAccessHub imports exist (they do in this file)
+              path.write_text(text.rstrip() + addition)
+              print("tests: appended TestHubDoorDirection")
+          PY
+
+      - name: Commit and push if changed
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add custom_components/unifi_access/hub.py README.md tests/test_hub.py
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "feat: sync hub/README/tests from #227 with review nits"
+          git push origin HEAD:fix/double-driveway-review-nits
