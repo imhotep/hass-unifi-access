@@ -15,12 +15,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Write release notes
+        run: |
+          cat > /tmp/notes.md <<'NOTES'
+          ### Added
+          - Double-driveway mode for UA Hub Gate (UGT): declare dual-relay doors in integration options, per-door Double-Driveway Mode switch, and Open Gate (In) / Open Gate (Out) buttons using `entry_method` (#227, #232, #226).
+
+          ### Changed
+          - While double-driveway mode is enabled, standard cover open/close/stop controls for that door are hidden (`control_cmd` is the wrong scheme for dual-relay hubs).
+
+          ### Fixed
+          - Options Configure soft-aborts with a clear message if the integration is still starting.
+          - Double-driveway mode store is sparse (True-only) and ignores stale door IDs.
+          - `select.py` uses the shared `HUB_TYPE_UGT` constant.
+          NOTES
+
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          if gh release view 3.0.15 >/dev/null 2>&1; then
+          if gh release view 3.0.15 --repo imhotep/hass-unifi-access >/dev/null 2>&1; then
             echo "Release 3.0.15 already exists"
             exit 0
           fi
@@ -28,16 +44,4 @@ jobs:
             --repo imhotep/hass-unifi-access \
             --target main \
             --title "3.0.15" \
-            --notes "$(cat <<'EOF'
-### Added
-- Double-driveway mode for UA Hub Gate (UGT): declare dual-relay doors in integration options, per-door Double-Driveway Mode switch, and Open Gate (In) / Open Gate (Out) buttons using `entry_method` (#227, #232, #226).
-
-### Changed
-- While double-driveway mode is enabled, standard cover open/close/stop controls for that door are hidden (`control_cmd` is the wrong scheme for dual-relay hubs).
-
-### Fixed
-- Options Configure soft-aborts with a clear message if the integration is still starting.
-- Double-driveway mode store is sparse (True-only) and ignores stale door IDs.
-- `select.py` uses the shared `HUB_TYPE_UGT` constant.
-EOF
-)"
+            --notes-file /tmp/notes.md
