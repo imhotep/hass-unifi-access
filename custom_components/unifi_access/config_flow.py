@@ -11,6 +11,7 @@ from homeassistant.config_entries import (
     ConfigFlow,
     ConfigFlowResult,
     OptionsFlow,
+    OptionsFlowWithReload,
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
@@ -189,7 +190,7 @@ class UnifiAccessConfigFlow(ConfigFlow, domain=DOMAIN):
         return UnifiAccessOptionsFlow()
 
 
-class UnifiAccessOptionsFlow(OptionsFlow):
+class UnifiAccessOptionsFlow(OptionsFlowWithReload):
     """Options flow for Unifi Access.
 
     Currently used only to declare which UGT door(s) are actually wired
