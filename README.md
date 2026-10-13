@@ -129,13 +129,15 @@ When websocket mode is enabled (`Use polling` is **not** selected), this integra
 One `Doorbell Press` entity is created per door. It updates when the integration receives a doorbell start or stop event.
 
 ### Event types
-- `unifi_access_doorbell_start`
-- `unifi_access_doorbell_stop`
+- `ring` — a doorbell press starts.
+- `unifi_access_doorbell_stop` — the doorbell call ends.
+
+The entity also advertises the legacy `unifi_access_doorbell_start` event type, but on a press it is immediately replaced by `ring` before the entity state is published. Automations must check for `ring`, not `unifi_access_doorbell_start`, in the `event_type` attribute.
 
 ### Event metadata
 - `door_name`
 - `door_id`
-- `type`
+- `type` — the original integration event type: `unifi_access_doorbell_start` on a press or `unifi_access_doorbell_stop` on stop. This is separate from `event_type`, which is `ring` on a press.
 - `guard_ids` (list of UUIDs) — IDs of the tenant/unit that rang the doorbell. **UA-Intercom only**, only present when non-empty. Cross-reference with the UniFi Access Users API to resolve to names.
 
 > **Note:** `guard_ids` and other event metadata are carried on the HA event itself, not on the entity's state attributes. They are only visible in Developer Tools → Events (not States), and are accessed in automations via `trigger.event.data.guard_ids`. See the [example automation](#use-doorbell-guard-ids-in-an-automation) below.
@@ -342,7 +344,55 @@ mode: single
 
 ## Use event as automation trigger
 
-Listen to Unifi Access events and use the event data to send a notification whenever someone accesses a door.
+`ring` is a value of the Doorbell Press entity's `event_type` attribute, not a standalone Home Assistant bus event. A `platform: event` trigger with `event_type: ring` (or `unifi_access_doorbell_start`) will not detect these presses. Use a **State changed** trigger instead.
+
+These two minimal examples show the difference. Replace `event.front_door_doorbell_press` with your entity ID.
+
+### Watch the event type attribute
+
+In the UI, select **Attribute: Event type** and **To: Ring**. This fires when the attribute changes to `ring`, but misses a second press if no stop event occurs between presses: `ring` to `ring` is not an attribute change. It can also fire when a saved `ring` value is restored at startup.
+
+```yaml
+alias: Notify when event type changes to ring
+triggers:
+  - platform: state
+    entity_id: event.front_door_doorbell_press
+    attribute: event_type
+    to: ring
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Doorbell rang
+```
+
+### Watch the event timestamp (recommended)
+
+Leave **Attribute** empty and watch the entity's state, which is the latest event's timestamp. Each press updates that timestamp, even when `event_type` stays `ring`. Then filter for `ring` with a condition. In YAML, `to: null` ignores attribute-only changes; the condition below also ignores entity creation and recovery from unknown/unavailable states.
+
+```yaml
+alias: Notify on each doorbell ring
+triggers:
+  - platform: state
+    entity_id: event.front_door_doorbell_press
+    to: null
+conditions:
+  - condition: template
+    value_template: >
+      {{ trigger.from_state is not none
+         and trigger.from_state.state not in ['unknown', 'unavailable']
+         and trigger.to_state is not none
+         and trigger.to_state.attributes.get('event_type') == 'ring' }}
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Doorbell rang
+```
+
+For Door Event entities, use the same timestamp approach with your Door Event entity ID and filter for `unifi_access_entry`, `unifi_access_exit`, or `unifi_access_access` instead of `ring`.
+
+## Notify when someone opens a door
+
+Watch the Door Event entity's timestamp and read the actor and door name from its attributes. This example handles entry and generic access events. Replace the entity and notification action with your own.
 
 ```yaml
 alias: Announce person having opened a Unifi door
