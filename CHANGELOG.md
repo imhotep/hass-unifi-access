@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Minimum supported Home Assistant version is now 2025.8.0 (`hacs.json`), required by `OptionsFlowWithReload`.
+- `py-unifi-access` requirement is now `>=1.6.1,<2.0.0` instead of an exact pin.
+
+### Fixed
+- Reauthentication and reconfiguration no longer fail on Home Assistant 2026.12 and newer. The config entry update listener was removed in favor of `OptionsFlowWithReload`.
+
 ## [3.0.14] - 2026-07-21
 
 ### Added
