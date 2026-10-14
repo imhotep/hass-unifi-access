@@ -1,4 +1,5 @@
 {
+  "homeassistant": "2025.8.0",
   "name": "Unifi Access",
   "render_readme": true
 }
