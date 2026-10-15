@@ -1,5 +1,10 @@
 # Unifi Access Custom Integration for Home Assistant
 
+[![Release](https://img.shields.io/github/v/release/imhotep/hass-unifi-access)](https://github.com/imhotep/hass-unifi-access/releases/latest)
+[![Hassfest](https://github.com/imhotep/hass-unifi-access/actions/workflows/hassfest.yaml/badge.svg)](https://github.com/imhotep/hass-unifi-access/actions/workflows/hassfest.yaml)
+[![HACS](https://github.com/imhotep/hass-unifi-access/actions/workflows/hacs.yaml/badge.svg)](https://github.com/imhotep/hass-unifi-access/actions/workflows/hacs.yaml)
+[![Tests](https://github.com/imhotep/hass-unifi-access/actions/workflows/tests.yaml/badge.svg)](https://github.com/imhotep/hass-unifi-access/actions/workflows/tests.yaml)
+
 - This is a basic integration of [Unifi Access](https://ui.com/door-access) in [Home Assistant](https://homeassistant.io). 
 - If you have Unifi Access set up with UID this will likely *NOT* work although some people have reported success using the free version of UID. 
 - _Camera Feeds are currently not offered by the API and therefore **NOT** supported_.
