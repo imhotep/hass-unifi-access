@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.16] - 2026-10-14
+
+### Changed
+- Minimum supported Home Assistant version is now 2025.8.0 (`hacs.json`), required by `OptionsFlowWithReload`.
+- `py-unifi-access` requirement is now `>=1.6.1,<2.0.0` instead of an exact pin.
+
+### Fixed
+- Reauthentication and reconfiguration no longer fail on Home Assistant 2026.12 and newer. The config entry update listener was removed in favor of `OptionsFlowWithReload`.
+
+## [3.0.15] - 2026-09-22
+
+### Added
+- Double-driveway mode for UGT (UA Hub Gate) hubs wired to two independent gate motors (Access firmware 4.2.16+). Declare which UGT doors are dual-relay under Configure, then use the per-door **Double-Driveway Mode** switch and the **Open Gate (In)** / **Open Gate (Out)** buttons. Direction uses the `entry_method` parameter. While the mode is on, the standard cover open/close/stop controls for that door are hidden.
+
 ## [3.0.14] - 2026-07-21
 
 ### Added
