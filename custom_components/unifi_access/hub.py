@@ -176,6 +176,11 @@ class UnifiAccessHub:
         # redundant logs.add events when a hub sends both.
         self._last_insight_time: dict[str, float] = {}
 
+        # Device ids the devices API reports as hubs. Only these may be
+        # recorded as a door's hub from websocket device updates, so a
+        # Protect camera bound to a door is never mistaken for its hub.
+        self._hub_device_ids: set[str] = set()
+
         # Set by __init__.py after coordinator creation to push WS updates.
         self.on_doors_updated: Callable[[], None] | None = None
         self.on_emergency_updated: Callable[[], None] | None = None
@@ -227,6 +232,15 @@ class UnifiAccessHub:
         capabilities = set(getattr(device, "capabilities", []))
         return "is_hub" in capabilities or "identity_is_hub" in capabilities
 
+    def _may_be_door_hub(self, device_id: str) -> bool:
+        """Return True if a websocket device update may set a door's hub.
+
+        Protect cameras bound to a door (G6 Entry, G6 Instant, ...) send
+        device updates for it too. Once the devices API has listed the hubs,
+        only those count.
+        """
+        return not self._hub_device_ids or device_id in self._hub_device_ids
+
     async def _async_map_hub_types(self) -> None:
         """Fetch devices and map hub types to doors."""
         try:
@@ -240,6 +254,7 @@ class UnifiAccessHub:
         hub_types = {
             device.id: device.type for device in devices if self._is_hub_device(device)
         }
+        self._hub_device_ids = set(hub_types)
 
         for device in devices:
             location_id = device.location_id
@@ -257,6 +272,24 @@ class UnifiAccessHub:
                 connected_id = device.connected_uah_id
                 state.hub_type = hub_types[connected_id]
                 state.hub_id = connected_id
+
+        # A hub serving more than one door (e.g. a UGT driving a gate and a
+        # pedestrian door) reports the building as its location_id, so the
+        # loop above can't match it to a door. Its websocket device update
+        # maps it exactly (see _apply_port_settings); until that arrives, or
+        # in polling mode, a sole hub must serve every hub-bound door still
+        # unmapped.
+        unplaced_hubs = [
+            device
+            for device in devices
+            if self._is_hub_device(device) and device.location_id not in self.doors
+        ]
+        if len(hub_types) == 1 and len(unplaced_hubs) == 1:
+            hub_device = unplaced_hubs[0]
+            for state in self.doors.values():
+                if state.hub_id is None and state.door.is_bind_hub:
+                    state.hub_type = hub_device.type
+                    state.hub_id = hub_device.id
 
         _LOGGER.debug(
             "Hub type mapping: %s",
@@ -603,9 +636,11 @@ class UnifiAccessHub:
         device_type = update.data.device_type
         door_id = update.data.door.unique_id if update.data.door else None
 
+        updated = self._apply_port_settings(device_id, device_type, update.data)
+
         if door_id and door_id in self.doors:
             state = self.doors[door_id]
-            if state.hub_id is None:
+            if state.hub_id is None and self._may_be_door_hub(device_id):
                 state.hub_type = device_type
                 state.hub_id = device_id
                 _LOGGER.debug(
@@ -615,7 +650,52 @@ class UnifiAccessHub:
                     device_type,
                     device_id,
                 )
-                self._notify_doors_updated()
+                updated = True
+
+        if updated:
+            self._notify_doors_updated()
+
+    def _apply_port_settings(
+        self, device_id: str, device_type: str, data: Any
+    ) -> bool:
+        """Map doors to a hub from the port settings in its device update.
+
+        A hub's ``access.data.device.update`` lists, per output port, the door
+        wired to it (``extensions`` entries named ``port_setting``). This is
+        the only place the Access API ties a door to a hub that reports the
+        building as its location, such as a UGT serving a gate and a door.
+        Returns True if a door's hub changed.
+        """
+        extensions = getattr(data, "extensions", None)
+        if not isinstance(extensions, list):
+            return False
+
+        updated = False
+        for extension in extensions:
+            if (
+                not isinstance(extension, dict)
+                or extension.get("extension_name") != "port_setting"
+                or extension.get("target_type") != "door"
+            ):
+                continue
+            state = self.doors.get(extension.get("target_value", ""))
+            if state is None or (state.hub_id, state.hub_type) == (
+                device_id,
+                device_type,
+            ):
+                continue
+            state.hub_id = device_id
+            state.hub_type = device_type
+            _LOGGER.debug(
+                "Door %s (%s) wired to %s of hub %s (%s)",
+                state.name,
+                state.id,
+                extension.get("source_id"),
+                device_type,
+                device_id,
+            )
+            updated = True
+        return updated
 
     async def _handle_logs_add(self, msg: WebsocketMessage) -> None:
         """Handle access log messages.
@@ -836,7 +916,7 @@ class UnifiAccessHub:
             if state is None:
                 continue
 
-            if state.hub_id is None:
+            if state.hub_id is None and self._may_be_door_hub(device_id):
                 state.hub_type = device_type
                 state.hub_id = device_id
 

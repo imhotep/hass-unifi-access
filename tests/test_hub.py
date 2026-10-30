@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from unifi_access_api import (
     ApiNotFoundError,
+    Device,
     DoorLockRelayStatus,
     DoorLockRuleType,
     DoorPositionStatus,
@@ -146,6 +147,46 @@ class TestHubUpdate:
         )
         await hub.async_update()
         assert hub.supports_door_lock_rules is False
+
+    async def test_async_update_maps_sole_hub_located_at_building(
+        self, hub: UnifiAccessHub, mock_api_client: AsyncMock
+    ) -> None:
+        """A sole hub whose location is the building maps to its bound doors."""
+        mock_api_client.get_devices.return_value = [
+            Device(
+                id="hub-ugt-001",
+                type="UGT",
+                location_id="building-1",
+                capabilities=["is_hub"],
+            ),
+        ]
+        await hub.async_update()
+        assert hub.doors["door-002"].hub_type == "UGT"
+        assert hub.doors["door-002"].hub_id == "hub-ugt-001"
+        # door-001 is not bound to a hub
+        assert hub.doors["door-001"].hub_id is None
+
+    async def test_async_update_skips_building_fallback_with_several_hubs(
+        self, hub: UnifiAccessHub, mock_api_client: AsyncMock
+    ) -> None:
+        """With more than one hub, a building-located hub is not guessed."""
+        mock_api_client.get_devices.return_value = [
+            Device(
+                id="hub-ugt-001",
+                type="UGT",
+                location_id="building-1",
+                capabilities=["is_hub"],
+            ),
+            Device(
+                id="hub-mini-001",
+                type="UA-Hub-Door-Mini",
+                location_id="door-001",
+                capabilities=["is_hub"],
+            ),
+        ]
+        await hub.async_update()
+        assert hub.doors["door-001"].hub_id == "hub-mini-001"
+        assert hub.doors["door-002"].hub_id is None
 
     async def test_async_get_emergency_status(self, hub: UnifiAccessHub) -> None:
         """Test fetching emergency status."""
@@ -689,6 +730,118 @@ class TestHubWebSocketHandlers:
             hub.doors["door-001"].door.door_position_status == DoorPositionStatus.CLOSE
         )
         hub.on_doors_updated.assert_called_once()
+
+    async def test_handle_v2_device_update_ignores_non_hub_device(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """A camera bound to an unmapped door must not become its hub."""
+        hub.doors["door-001"].hub_id = None
+        hub.doors["door-001"].hub_type = None
+
+        msg = MagicMock()
+        msg.data.id = "camera-001"
+        msg.data.device_type = "UVC G6 Instant"
+        msg.data.alias = "Gate Camera"
+        msg.data.name = "Camera"
+        msg.data.online = True
+        msg.data.firmware = "v5.0"
+
+        loc_state = MagicMock()
+        loc_state.location_id = "door-001"
+        loc_state.dps = DoorPositionStatus.OPEN
+        loc_state.lock = "locked"
+        msg.data.location_states = [loc_state]
+
+        await hub._handle_v2_device_update(msg)
+
+        assert hub.doors["door-001"].hub_id is None
+        assert hub.doors["door-001"].hub_type is None
+        assert (
+            hub.doors["door-001"].door.door_position_status == DoorPositionStatus.OPEN
+        )
+        hub.on_doors_updated.assert_called_once()
+
+    async def test_handle_device_update_ignores_non_hub_device(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """A camera device update must not become an unmapped door's hub."""
+        hub.doors["door-001"].hub_id = None
+        hub.doors["door-001"].hub_type = None
+
+        msg = MagicMock()
+        msg.data.unique_id = "camera-001"
+        msg.data.device_type = "UVC G6 Entry"
+        msg.data.door = MagicMock()
+        msg.data.door.unique_id = "door-001"
+
+        await hub._handle_device_update(msg)
+
+        assert hub.doors["door-001"].hub_id is None
+        hub.on_doors_updated.assert_not_called()
+
+    async def test_handle_device_update_maps_doors_from_port_settings(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """A hub's port settings map every door wired to it, overriding guesses."""
+        hub.doors["door-001"].hub_id = "camera-001"
+        hub.doors["door-001"].hub_type = "UVC G6 Instant"
+        hub.doors["door-002"].hub_id = None
+        hub.doors["door-002"].hub_type = None
+
+        msg = MagicMock()
+        msg.data.unique_id = "hub-gate-001"
+        msg.data.device_type = "UGT"
+        msg.data.door = None
+        msg.data.extensions = [
+            {
+                "extension_name": "port_setting",
+                "source_id": "port1",
+                "target_type": "door",
+                "target_value": "door-001",
+            },
+            {
+                "extension_name": "port_setting",
+                "source_id": "port2",
+                "target_type": "door",
+                "target_value": "door-002",
+            },
+            {
+                "extension_name": "port_setting",
+                "source_id": "port3",
+                "target_type": "door",
+                "target_value": "door-unknown",
+            },
+            {"extension_name": "other", "target_type": "door", "target_value": "x"},
+        ]
+
+        await hub._handle_device_update(msg)
+
+        for door_id in ("door-001", "door-002"):
+            assert hub.doors[door_id].hub_id == "hub-gate-001"
+            assert hub.doors[door_id].hub_type == "UGT"
+        hub.on_doors_updated.assert_called_once()
+
+    async def test_handle_device_update_port_settings_unchanged(
+        self, hub: UnifiAccessHub
+    ) -> None:
+        """Port settings that match the current mapping don't notify."""
+        msg = MagicMock()
+        msg.data.unique_id = "hub-ugt-001"
+        msg.data.device_type = "UGT"
+        msg.data.door = None
+        msg.data.extensions = [
+            {
+                "extension_name": "port_setting",
+                "source_id": "port1",
+                "target_type": "door",
+                "target_value": "door-001",
+            },
+        ]
+
+        await hub._handle_device_update(msg)
+
+        assert hub.doors["door-001"].hub_id == "hub-ugt-001"
+        hub.on_doors_updated.assert_not_called()
 
     async def test_handle_location_update_legacy(
         self, hub: UnifiAccessHub, mock_api_client: AsyncMock

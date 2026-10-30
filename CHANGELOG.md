@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- A UGT (UA Hub Gate) serving two doors (gate and pedestrian door) is now recognised as their hub, so the **Entity Type** select and gate/garage cover are offered. The hub reports the building as its location, so no door was matched to it at startup. Doors are now mapped from the hub's port settings in its websocket device update, which also covers controllers with several hubs; a controller with a single hub is mapped at startup too.
+- A Protect camera bound to a door (e.g. G6 Entry, G6 Instant) is no longer recorded as the door's hub from its websocket device updates.
+
 ## [3.0.16] - 2026-10-14
 
 ### Changed
