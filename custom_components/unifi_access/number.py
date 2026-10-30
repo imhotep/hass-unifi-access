@@ -82,6 +82,7 @@ class TemporaryLockRuleIntervalNumberEntity(RestoreNumber):
         """Select Door Lock Rule Interval (in minutes)."""
         self._attr_native_value = value
         self.door.lock_rule_interval = int(value)
+        self.async_write_ha_state()
 
 
 class DoorOpenTimeNumberEntity(RestoreNumber):
@@ -124,6 +125,7 @@ class DoorOpenTimeNumberEntity(RestoreNumber):
         """Set door open time."""
         self._attr_native_value = value
         self.door.open_time = int(value)
+        self.async_write_ha_state()
 
 
 class DoorCloseTimeNumberEntity(RestoreNumber):
@@ -166,3 +168,4 @@ class DoorCloseTimeNumberEntity(RestoreNumber):
         """Set door close time."""
         self._attr_native_value = value
         self.door.close_time = int(value)
+        self.async_write_ha_state()

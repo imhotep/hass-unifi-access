@@ -619,3 +619,30 @@ class TestCoverControlCommands:
             COVER_DOMAIN, "stop_cover", {"entity_id": cover_entity_id}, blocking=True
         )
         mock_client.unlock_door.assert_called_once_with("door-001", control_cmd="stop")
+
+
+class TestCoverTimeoutNumbers:
+    """Opening/closing timeout numbers apply and publish the new value."""
+
+    @pytest.mark.parametrize(
+        ("unique_id", "door_attr"),
+        [
+            ("door_open_time_door-001", "open_time"),
+            ("door_close_time_door-001", "close_time"),
+        ],
+    )
+    async def test_set_value_updates_state(
+        self, hass: HomeAssistant, setup_integration, unique_id: str, door_attr: str
+    ) -> None:
+        entry, _ = setup_integration
+        await _switch_door_to_garage(hass)
+        entity_id = er.async_get(hass).async_get_entity_id("number", DOMAIN, unique_id)
+        assert entity_id is not None
+
+        await hass.services.async_call(
+            "number", "set_value", {"entity_id": entity_id, "value": 30}, blocking=True
+        )
+
+        assert float(hass.states.get(entity_id).state) == 30
+        door = entry.runtime_data.hub.doors["door-001"]
+        assert getattr(door, door_attr) == 30
